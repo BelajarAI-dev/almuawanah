@@ -901,6 +901,7 @@
 
       const tglPilihan = document.getElementById('tglAbsensiGuru')?.value || new Date().toISOString().split('T')[0];
 
+      // Ambil absensi tanggal terpilih
       const qA = query(collection(db, "absensi"), where("tanggal", "==", tglPilihan));
       const snapA = await getDocs(qA);
 
@@ -908,6 +909,16 @@
       snapA.forEach(d => {
         const item = d.data();
         existingAbsenMap[item.id_siswa] = { docId: d.id, status: item.status, keterangan: item.keterangan || '' };
+      });
+
+      // Ambil pengajuan izin/sakit tanggal terpilih
+      const qP = query(collection(db, "pengajuan_absensi"), where("tanggal", "==", tglPilihan));
+      const snapP = await getDocs(qP);
+
+      let pengajuanMap = {};
+      snapP.forEach(d => {
+        const p = d.data();
+        pengajuanMap[p.id_siswa] = { docId: d.id, jenis: p.jenis, alasan: p.alasan, status: p.status };
       });
 
       let rows = '';
@@ -918,6 +929,23 @@
         const ex = existingAbsenMap[idSiswa];
         const st = ex ? ex.status : '-';
         const ket = ex ? ex.keterangan : '';
+        const pengajuan = pengajuanMap[idSiswa];
+
+        let approvalCell = '<span class="text-muted small">-</span>';
+        if (pengajuan) {
+          if (pengajuan.status === 'Approved') {
+            approvalCell = `<span class="badge bg-success">Disetujui (${pengajuan.jenis})</span>`;
+          } else {
+            approvalCell = `
+              <div class="bg-warning bg-opacity-15 p-2 rounded border border-warning small">
+                <strong>Pengajuan ${pengajuan.jenis}:</strong> ${pengajuan.alasan}<br>
+                <button class="btn btn-sm btn-success mt-1 py-0 px-2" onclick="approvePengajuanAbsensi('${pengajuan.docId}', '${idSiswa}', '${pengajuan.jenis}', '${tglPilihan}')">
+                  <i class="bi bi-check-circle me-1"></i>Approve
+                </button>
+              </div>
+            `;
+          }
+        }
 
         rows += `
           <tr data-id="${idSiswa}" data-nama="${s.nama_siswa}" data-docid="${ex ? ex.docId : ''}" data-oldstatus="${st}">
@@ -933,6 +961,7 @@
               </select>
             </td>
             <td><input type="text" class="form-control form-control-sm ket-absen" value="${ket}" placeholder="Catatan opsional"></td>
+            <td class="text-center">${approvalCell}</td>
           </tr>
         `;
       });
@@ -940,7 +969,7 @@
       main.innerHTML = `
         <div class="card card-dashboard p-4">
           <h5><i class="bi bi-pen text-success me-2"></i> Input Absensi Harian Santri (Kelas: ${idKelas})</h5>
-          <p class="text-muted small mb-3">Pilihan default adalah <strong>Kosong (-)</strong>. Jika data sudah ada di database, maka status eksisting akan dimuat secara otomatis.</p>
+          <p class="text-muted small mb-3">Pilihan default adalah <strong>Kosong (-)</strong>. Jika ada pengajuan izin/sakit dari wali santri, silakan klik tombol <strong>Approve</strong> untuk otomatis mengisi absensi dan merefresh halaman.</p>
           <div class="row align-items-center mb-3 mt-2">
             <div class="col-md-3">
               <label class="form-label fw-bold mb-1"><i class="bi bi-calendar-event me-1"></i>Tanggal:</label>
@@ -950,15 +979,56 @@
           <div class="table-responsive">
             <table class="table table-bordered table-striped align-middle">
               <thead class="table-success">
-                <tr><th width="50" class="text-center">No</th><th>Nama Santri & NIS</th><th width="180" class="text-center">Status Kehadiran</th><th>Keterangan</th></tr>
+                <tr><th width="50" class="text-center">No</th><th>Nama Santri & NIS</th><th width="160" class="text-center">Status Kehadiran</th><th>Keterangan</th><th width="200" class="text-center">Kolom Approval Pengajuan</th></tr>
               </thead>
-              <tbody id="tblSiswaAbsen">${rows || '<tr><td colspan="4" class="text-center text-muted">Tidak ada santri di kelas ini.</td></tr>'}</tbody>
+              <tbody id="tblSiswaAbsen">${rows || '<tr><td colspan="5" class="text-center text-muted">Tidak ada santri di kelas ini.</td></tr>'}</tbody>
             </table>
           </div>
           <button class="btn btn-success mt-2 px-4" onclick="validateAndSaveAbsensi()"><i class="bi bi-save me-2"></i>Simpan Rekap Absensi</button>
         </div>
       `;
     }
+
+    // Fungsi Approve Pengajuan Absensi + Auto Absen + Auto Refresh
+    window.approvePengajuanAbsensi = async function(pengajuanId, idSiswa, jenisIzin, tanggal) {
+      try {
+        // 1. Update status pengajuan menjadi Approved
+        await updateDoc(doc(db, "pengajuan_absensi", pengajuanId), {
+          status: 'Approved'
+        });
+
+        // 2. Cek apakah santri sudah punya rekam absensi pada tanggal tersebut
+        const qA = query(collection(db, "absensi"), where("id_siswa", "==", idSiswa), where("tanggal", "==", tanggal));
+        const snapA = await getDocs(qA);
+
+        if (!snapA.empty) {
+          // Jika sudah ada, update statusnya sesuai pengajuan
+          let existingDocId = null;
+          snapA.forEach(d => { existingDocId = d.id; });
+          await updateDoc(doc(db, "absensi", existingDocId), {
+            status: jenisIzin,
+            keterangan: `Disetujui via pengajuan wali`
+          });
+        } else {
+          // Jika belum ada, buat record absensi baru otomatis
+          await addDoc(collection(db, "absensi"), {
+            id_siswa: idSiswa,
+            tanggal: tanggal,
+            status: jenisIzin,
+            keterangan: `Disetujui via pengajuan wali`,
+            created_at: new Date()
+          });
+        }
+
+        alert(`Pengajuan ${jenisIzin} berhasil diapprove dan absensi otomatis diperbarui!`);
+        
+        // 3. Autorefresh halaman guru absensi
+        renderGuruAbsensi();
+
+      } catch (err) {
+        alert('Gagal memproses approval: ' + err.message);
+      }
+    };
 
     window.validateAndSaveAbsensi = function(forceUpdateList) {
       const tgl = document.getElementById('tglAbsensiGuru').value;
