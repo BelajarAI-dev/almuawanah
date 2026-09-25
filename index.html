@@ -424,7 +424,7 @@
     async function getKelasDropdownOptions(selectedVal = '', includeEmpty = false) {
       try {
         const snap = await getDocs(collection(db, "kelas"));
-        let options = includeEmpty ? '<option value="">-- Tidak Terikat Kelas --</option>' : '';
+        let options = includeEmpty ? '<option value="">-- Tidak Terikat Kelas / Semua Kelas --</option>' : '';
         snap.forEach(d => {
           const k = d.data();
           const isSelected = (k.id_kelas === selectedVal) ? 'selected' : '';
@@ -435,7 +435,7 @@
         }
         return options;
       } catch (err) {
-        return includeEmpty ? '<option value="">-- Tidak Terikat Kelas --</option><option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>' : '<option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>';
+        return includeEmpty ? '<option value="">-- Semua Kelas --</option><option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>' : '<option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>';
       }
     }
 
@@ -2073,41 +2073,46 @@
                 <div class="mb-3"><label class="form-label fw-bold">Pilih Santri</label><select id="adminInfaqSiswa" class="form-select border-success">${optionsInput}</select></div>
                 <div class="mb-3"><label class="form-label fw-bold">Tanggal Transaksi</label><input type="date" id="adminInfaqTgl" class="form-control" value="${new Date().toISOString().split('T')[0]}" required></div>
                 <div class="mb-3"><label class="form-label fw-bold">Nominal Infaq (Rp)</label><input type="number" id="adminInfaqJumlah" class="form-control" required placeholder="25000"></div>
-                <div class="mb-3"><label class="form-label fw-bold">Keterangan</label><input type="text" id="adminInfaqKet" class="form-control" placeholder="Infaq bulanan"></div>
-                <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i> Simpan Infaq</button>
+                <div class="mb-3"><label class="form-label fw-bold">Keterangan / Catatan</label><input type="text" id="adminInfaqKet" class="form-control" placeholder="Infaq Bulanan / Sukarela"></div>
+                <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i> Simpan Transaksi Infaq</button>
               </form>
             </div>
 
             <div class="tab-pane fade" id="tabRekapInfaq">
-              <div class="alert alert-success d-flex justify-content-between align-items-center mb-3">
-                <div><strong>Total Infaq Terkumpul Seluruh Lembaga:</strong></div>
-                <h4 class="mb-0 fw-bold">Rp ${totalInfaq.toLocaleString('id-ID')}</h4>
-              </div>
-
               <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
                 <div class="col-md-3">
                   <label class="form-label fw-bold mb-1">Filter Kelas:</label>
-                  <select id="filterKelasAdminInfaq" class="form-select border-success" onchange="filterAdminInfaqTable()">
-                    <option value="ALL">-- Semua Kelas --</option>
-                    ${kelasFilterOptions.replace('<option value="">-- Tidak Terikat Kelas --</option>', '')}
-                  </select>
+                  <select id="filterKelasInfaq" class="form-select border-success" onchange="filterInfaqTable()">${kelasFilterOptions}</select>
                 </div>
                 <div class="col-md-4">
                   <label class="form-label fw-bold mb-1">Filter Santri:</label>
-                  <select id="filterSiswaAdminInfaq" class="form-select border-success" onchange="filterAdminInfaqTable()">${optionsFilter}</select>
+                  <select id="filterSiswaInfaq" class="form-select border-success" onchange="filterInfaqTable()">${optionsFilter}</select>
                 </div>
                 <div class="col-md-5">
-                  <label class="form-label fw-bold mb-1">Pencarian Keterangan / Nominal:</label>
-                  <input type="text" id="searchAdminInfaqInput" class="form-control border-success" placeholder="Cari..." onkeyup="filterAdminInfaqTable()">
+                  <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
+                  <input type="text" id="searchInfaqInput" class="form-control border-success" placeholder="Ketik kata kunci untuk mencari..." onkeyup="filterInfaqTable()">
                 </div>
+              </div>
+
+              <div class="alert alert-success d-flex justify-content-between align-items-center p-3 mb-3">
+                <span class="fw-bold fs-6"><i class="bi bi-wallet2 me-2"></i>Total Tersemail Infaq Terfilter:</span>
+                <span class="fs-4 fw-bold" id="lblTotalInfaq">Rp 0</span>
               </div>
 
               <div class="table-responsive">
                 <table class="table table-sm table-bordered align-middle">
                   <thead class="table-success">
-                    <tr><th width="40" class="text-center">No</th><th>Nama Santri</th><th width="90" class="text-center">Kelas</th><th width="110" class="text-center">Tanggal</th><th class="text-end" width="130">Jumlah</th><th>Keterangan</th><th width="80" class="text-center">Aksi</th></tr>
+                    <tr>
+                      <th width="40" class="text-center">No</th>
+                      <th>Nama Santri</th>
+                      <th width="100" class="text-center">Kelas</th>
+                      <th width="110" class="text-center">Tanggal</th>
+                      <th width="130" class="text-end">Jumlah (Rp)</th>
+                      <th>Keterangan</th>
+                      <th width="80" class="text-center">Aksi</th>
+                    </tr>
                   </thead>
-                  <tbody id="tblAdminInfaqBody"></tbody>
+                  <tbody id="tblInfaqBody"></tbody>
                 </table>
               </div>
             </div>
@@ -2115,34 +2120,37 @@
         </div>
       `;
 
-      filterAdminInfaqTable();
+      filterInfaqTable();
     }
 
-    window.filterAdminInfaqTable = function() {
-      const selectedKelas = document.getElementById('filterKelasAdminInfaq')?.value;
-      const selectedSiswa = document.getElementById('filterSiswaAdminInfaq')?.value;
-      const searchQuery = document.getElementById('searchAdminInfaqInput')?.value.toLowerCase().trim();
+    window.filterInfaqTable = function() {
+      const selectedKelas = document.getElementById('filterKelasInfaq')?.value;
+      const selectedSiswa = document.getElementById('filterSiswaInfaq')?.value;
+      const searchQuery = document.getElementById('searchInfaqInput')?.value.toLowerCase().trim();
 
+      let grandTotal = 0;
       let filtered = window.rawInfaqListCache.filter(item => {
-        const matchKelas = (selectedKelas === 'ALL' || !selectedKelas || item.id_kelas === selectedKelas);
+        const matchKelas = (!selectedKelas || item.id_kelas === selectedKelas);
         const matchSiswa = (selectedSiswa === 'ALL' || !selectedSiswa || item.id_siswa === selectedSiswa);
         const matchText = !searchQuery || 
           item.nama_siswa.toLowerCase().includes(searchQuery) ||
-          item.jumlah.toString().includes(searchQuery) ||
-          (item.keterangan && item.keterangan.toLowerCase().includes(searchQuery));
+          (item.keterangan && item.keterangan.toLowerCase().includes(searchQuery)) ||
+          String(item.jumlah).includes(searchQuery);
         return matchKelas && matchSiswa && matchText;
       });
 
       let rows = '';
       let no = 1;
       filtered.forEach(item => {
+        const amt = Number(item.jumlah) || 0;
+        grandTotal += amt;
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
             <td><strong>${item.nama_siswa}</strong></td>
-            <td class="text-center"><span class="badge bg-info text-dark">${item.id_kelas}</span></td>
+            <td class="text-center"><span class="badge bg-secondary">${item.id_kelas}</span></td>
             <td class="text-center">${item.tanggal}</td>
-            <td class="text-end">Rp ${(Number(item.jumlah)||0).toLocaleString('id-ID')}</td>
+            <td class="text-end fw-bold text-success">Rp ${amt.toLocaleString('id-ID')}</td>
             <td>${item.keterangan || '-'}</td>
             <td class="text-center">
               <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteAdminInfaq('${item.docId}')">
@@ -2153,7 +2161,11 @@
         `;
       });
 
-      document.getElementById('tblAdminInfaqBody').innerHTML = rows || '<tr><td colspan="7" class="text-center text-muted">Data infaq tidak ditemukan.</td></tr>';
+      const totalLbl = document.getElementById('lblTotalInfaq');
+      if (totalLbl) totalLbl.innerText = `Rp ${grandTotal.toLocaleString('id-ID')}`;
+
+      const body = document.getElementById('tblInfaqBody');
+      if (body) body.innerHTML = rows || '<tr><td colspan="7" class="text-center text-muted">Data transaksi infaq tidak ditemukan.</td></tr>';
     };
 
     window.submitAdminInfaq = async function(e) {
@@ -2162,105 +2174,113 @@
         await addDoc(collection(db, "infaq"), {
           id_siswa: document.getElementById('adminInfaqSiswa').value,
           tanggal: document.getElementById('adminInfaqTgl').value,
-          jumlah: Number(document.getElementById('adminInfaqJumlah').value) || 0,
+          jumlah: Number(document.getElementById('adminInfaqJumlah').value),
           keterangan: document.getElementById('adminInfaqKet').value,
           created_by: window.currentUser.nama
         });
-        await logSystemActivity(`Admin mencatat transaksi infaq sebesar ${document.getElementById('adminInfaqJumlah').value}`);
-        alert('Infaq berhasil dicatat!');
+        await logSystemActivity(`Mencatat transaksi infaq santri`);
+        alert('Transaksi infaq berhasil disimpan!');
         renderAdminInfaq();
       } catch (err) {
-        alert('Gagal menyimpan infaq: ' + err.message);
+        alert('Gagal menyimpan transaksi: ' + err.message);
       }
     };
 
     window.deleteAdminInfaq = async function(docId) {
-      if (confirm('Yakin ingin menghapus data infaq ini?')) {
-        try {
-          await deleteDoc(doc(db, "infaq", docId));
-          await logSystemActivity(`Admin menghapus data infaq ID ${docId}`);
-          alert('Data infaq berhasil dihapus.');
-          renderAdminInfaq();
-        } catch (err) {
-          alert('Gagal menghapus: ' + err.message);
-        }
+      if (!confirm('Apakah Anda yakin ingin menghapus data infaq ini?')) return;
+      try {
+        await deleteDoc(doc(db, "infaq", docId));
+        await logSystemActivity(`Menghapus data infaq`);
+        alert('Data infaq berhasil dihapus!');
+        renderAdminInfaq();
+      } catch (err) {
+        alert('Gagal menghapus: ' + err.message);
       }
     };
 
-    // --- 4.2 Master Data Santri (`adminSantri`) [Dengan Modal Pencarian Wali dari Tabel Users] ---
+    // --- 4.2 Master Data Santri (Admin) ---
     async function renderAdminSantri() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Santri...`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Master Santri...`;
 
-      const kelasOptionsHtml = await getKelasDropdownOptions('', false);
+      const kelasOptions = await getKelasDropdownOptions('', false);
       const kelasFilterOptions = await getKelasDropdownOptions('', true);
-
-      // Cache wali users untuk pencarian modal
-      const qWali = query(collection(db, "users"), where("role", "==", "walisiswa"));
-      const snapWali = await getDocs(qWali);
-      let waliList = [];
-      snapWali.forEach(d => waliList.push({ id_user: d.id, ...d.data() }));
-      window.rawWaliUsersCache = waliList;
 
       const snap = await getDocs(collection(db, "siswa"));
       let santriList = [];
-      snap.forEach(d => {
-        santriList.push({ docId: d.id, ...d.data() });
-      });
+      snap.forEach(d => santriList.push({ docId: d.id, ...d.data() }));
 
-      santriList.sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
-      window.rawSantriListCache = santriList;
-
+      const snapW = await getDocs(query(collection(db, "users"), where("role", "==", "walisiswa")));
       let waliMap = {};
-      waliList.forEach(w => { waliMap[w.id_user] = w.nama; });
+      let waliList = [];
+      snapW.forEach(d => {
+        const w = d.data();
+        waliMap[d.id] = w.nama;
+        waliList.push({ id_user: d.id, nama: w.nama, username: w.username });
+      });
+      window.rawWaliUsersCache = waliList;
+
+      window.rawSantriListCache = santriList.map(s => ({
+        ...s,
+        nama_wali: waliMap[s.id_wali] || 'Wali Tidak Ditemukan'
+      }));
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
           <h5><i class="bi bi-mortarboard text-success me-2"></i> Master Data Santri</h5>
           <hr>
-          <form onsubmit="addSantri(event)" class="row g-2 mb-4 bg-light p-3 rounded border">
-            <h6 class="fw-bold text-success">Tambah Santri Baru</h6>
-            <div class="col-md-2"><input type="text" id="newSantriNis" class="form-control" required placeholder="NIS"></div>
-            <div class="col-md-3"><input type="text" id="newSantriNama" class="form-control" required placeholder="Nama Lengkap Santri"></div>
-            <div class="col-md-2"><select id="newSantriKelas" class="form-select">${kelasOptionsHtml}</select></div>
-            <div class="col-md-2">
-              <div class="input-group">
-                <input type="text" id="newSantriWali" class="form-control bg-light" readonly required placeholder="Pilih Wali...">
-                <button class="btn btn-outline-success" type="button" onclick="openWaliSearchModal('new')"><i class="bi bi-search"></i></button>
+          <ul class="nav nav-tabs" id="adminSantriNav">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabAddSantri">Tambah Santri Baru</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabListSantri">Daftar Master Santri</a></li>
+          </ul>
+
+          <div class="tab-content pt-3">
+            <div class="tab-pane fade show active" id="tabAddSantri">
+              <form onsubmit="submitAddSantri(event)">
+                <div class="mb-3"><label class="form-label fw-bold">NIS (Nomor Induk Santri)</label><input type="text" id="addSantriNis" class="form-control" required placeholder="Contoh: 2026001"></div>
+                <div class="mb-3"><label class="form-label fw-bold">Nama Lengkap Santri</label><input type="text" id="addSantriNama" class="form-control" required placeholder="Nama lengkap"></div>
+                <div class="mb-3"><label class="form-label fw-bold">Kelas</label><select id="addSantriKelas" class="form-select border-success">${kelasOptions}</select></div>
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Wali Santri Terkait</label>
+                  <div class="input-group">
+                    <input type="hidden" id="addSantriWaliId" required>
+                    <input type="text" id="addSantriWaliName" class="form-control bg-light" readonly placeholder="Klik 'Cari Wali' untuk memilih Wali Santri..." required>
+                    <button class="btn btn-outline-success" type="button" onclick="openWaliSearchModal('new')"><i class="bi bi-search me-1"></i> Cari Wali</button>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="bi bi-plus-circle me-1"></i> Tambah Data Santri</button>
+              </form>
+            </div>
+
+            <div class="tab-pane fade" id="tabListSantri">
+              <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+                <div class="col-md-4">
+                  <label class="form-label fw-bold mb-1">Filter Kelas:</label>
+                  <select id="filterKelasSantri" class="form-select border-success" onchange="filterSantriTable()">${kelasFilterOptions}</select>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label fw-bold mb-1">Pencarian Langsung (Nama / NIS / Wali):</label>
+                  <input type="text" id="searchSantriInput" class="form-control border-success" placeholder="Ketik kata kunci untuk mencari..." onkeyup="filterSantriTable()">
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                  <thead class="table-success">
+                    <tr>
+                      <th width="40" class="text-center">No</th>
+                      <th width="120" class="text-center">NIS</th>
+                      <th>Nama Santri</th>
+                      <th width="100" class="text-center">Kelas</th>
+                      <th>Wali Santri</th>
+                      <th width="100" class="text-center">Status</th>
+                      <th width="130" class="text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tblSantriBody"></tbody>
+                </table>
               </div>
             </div>
-            <div class="col-md-2">
-              <select id="newSantriStatus" class="form-select">
-                <option value="Aktif">Aktif</option>
-                <option value="Lulus">Lulus</option>
-                <option value="Keluar">Keluar</option>
-              </select>
-            </div>
-            <div class="col-md-1"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
-          </form>
-
-          <h6 class="fw-bold text-success mb-3">Daftar Santri TPQ</h6>
-          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
-            <div class="col-md-4">
-              <label class="form-label fw-bold mb-1">Filter Kelas:</label>
-              <select id="filterKelasSantri" class="form-select border-success" onchange="filterSantriTable()">
-                <option value="ALL">-- Semua Kelas --</option>
-                ${kelasFilterOptions.replace('<option value="">-- Tidak Terikat Kelas --</option>', '')}
-              </select>
-            </div>
-            <div class="col-md-8">
-              <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
-              <input type="text" id="searchSantriInput" class="form-control border-success" placeholder="Cari nama atau NIS santri..." onkeyup="filterSantriTable()">
-            </div>
-          </div>
-
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-              <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th width="90">NIS</th><th>Nama Santri</th><th width="90">Kelas</th><th>Wali Santri</th><th width="90">Status</th><th width="110" class="text-center">Aksi</th></tr>
-              </thead>
-              <tbody id="tblSantriBody"></tbody>
-            </table>
           </div>
         </div>
       `;
@@ -2272,34 +2292,31 @@
       const selectedKelas = document.getElementById('filterKelasSantri')?.value;
       const searchQuery = document.getElementById('searchSantriInput')?.value.toLowerCase().trim();
 
-      let waliMap = {};
-      window.rawWaliUsersCache.forEach(w => { waliMap[w.id_user] = w.nama; });
-
-      let filtered = window.rawSantriListCache.filter(s => {
-        const matchKelas = (selectedKelas === 'ALL' || !selectedKelas || s.id_kelas === selectedKelas);
+      let filtered = window.rawSantriListCache.filter(item => {
+        const matchKelas = (!selectedKelas || item.id_kelas === selectedKelas);
         const matchText = !searchQuery || 
-          s.nama_siswa.toLowerCase().includes(searchQuery) ||
-          s.nis.toLowerCase().includes(searchQuery);
+          item.nama_siswa.toLowerCase().includes(searchQuery) ||
+          item.nis.toLowerCase().includes(searchQuery) ||
+          item.nama_wali.toLowerCase().includes(searchQuery);
         return matchKelas && matchText;
       });
 
       let rows = '';
       let no = 1;
-      filtered.forEach(s => {
-        const waliName = waliMap[s.id_wali] || `<span class="text-danger">Wali belum diatur (${s.id_wali || '-'})</span>`;
+      filtered.forEach(item => {
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
-            <td><strong>${s.nis}</strong></td>
-            <td>${s.nama_siswa}</td>
-            <td><span class="badge bg-info text-dark">${s.id_kelas}</span></td>
-            <td>${waliName}</td>
-            <td><span class="badge bg-success">${s.status_siswa || 'Aktif'}</span></td>
+            <td class="text-center fw-bold">${item.nis}</td>
+            <td><strong>${item.nama_siswa}</strong></td>
+            <td class="text-center"><span class="badge bg-secondary">${item.id_kelas}</span></td>
+            <td>${item.nama_wali}</td>
+            <td class="text-center"><span class="badge bg-success">${item.status_siswa || 'Aktif'}</span></td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditSantri('${s.docId}', '${encodeURIComponent(s.nis)}', '${encodeURIComponent(s.nama_siswa)}', '${s.id_kelas}', '${s.id_wali || ''}', '${s.status_siswa || 'Aktif'}')">
-                <i class="bi bi-pencil-square"></i>
+              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditSantri('${item.docId}', '${item.nis}', '${encodeURIComponent(item.nama_siswa)}', '${item.id_kelas}', '${item.id_wali}', '${item.status_siswa || 'Aktif'}')">
+                <i class="bi bi-pencil-square"></i> Edit
               </button>
-              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteSantri('${s.docId}')">
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteSantri('${item.docId}')">
                 <i class="bi bi-trash"></i>
               </button>
             </td>
@@ -2307,117 +2324,95 @@
         `;
       });
 
-      document.getElementById('tblSantriBody').innerHTML = rows || '<tr><td colspan="7" class="text-center text-muted">Data santri tidak ditemukan.</td></tr>';
+      const body = document.getElementById('tblSantriBody');
+      if (body) body.innerHTML = rows || '<tr><td colspan="7" class="text-center text-muted">Data santri tidak ditemukan.</td></tr>';
     };
 
-    // Fungsi Modal Pencarian Wali Interaktif
-    window.openWaliSearchModal = async function(mode) {
+    window.openWaliSearchModal = function(mode) {
       document.getElementById('targetFormWaliMode').value = mode;
-      
-      // Pastikan cache wali terisi
-      if (!window.rawWaliUsersCache || window.rawWaliUsersCache.length === 0) {
-        const qWali = query(collection(db, "users"), where("role", "==", "walisiswa"));
-        const snapWali = await getDocs(qWali);
-        let waliList = [];
-        snapWali.forEach(d => waliList.push({ id_user: d.id, ...d.data() }));
-        window.rawWaliUsersCache = waliList;
-      }
-
-      renderWaliSearchModalTable(window.rawWaliUsersCache);
+      document.getElementById('searchWaliModalInput').value = '';
+      filterWaliSearchTable();
       new bootstrap.Modal(document.getElementById('waliSearchModal')).show();
     };
 
-    function renderWaliSearchModalTable(dataList) {
+    window.filterWaliSearchTable = function() {
+      const q = document.getElementById('searchWaliModalInput').value.toLowerCase().trim();
+      let list = window.rawWaliUsersCache || [];
+      let filtered = list.filter(w => !q || w.nama.toLowerCase().includes(q) || w.username.toLowerCase().includes(q));
+
       let rows = '';
       let no = 1;
-      dataList.forEach(w => {
+      filtered.forEach(w => {
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
-            <td><strong>${w.nama}</strong><br><small class="text-muted">ID: ${w.id_user}</small></td>
+            <td><strong>${w.nama}</strong></td>
             <td>${w.username}</td>
             <td class="text-center">
-              <button class="btn btn-sm btn-success px-3" onclick="selectWaliFromModal('${w.id_user}', '${encodeURIComponent(w.nama)}')">
-                <i class="bi bi-check2 me-1"></i>Pilih
+              <button class="btn btn-sm btn-success py-0 px-2" onclick="selectWaliFromModal('${w.id_user}', '${encodeURIComponent(w.nama)}')">
+                <i class="bi bi-check-lg me-1"></i> Pilih
               </button>
             </td>
           </tr>
         `;
       });
-      document.getElementById('tblWaliSearchModalBody').innerHTML = rows || '<tr><td colspan="4" class="text-center text-muted">Data wali santri tidak ditemukan di database users.</td></tr>';
-    }
 
-    window.filterWaliSearchTable = function() {
-      const q = document.getElementById('searchWaliModalInput').value.toLowerCase().trim();
-      const filtered = window.rawWaliUsersCache.filter(w => 
-        w.nama.toLowerCase().includes(q) || w.username.toLowerCase().includes(q)
-      );
-      renderWaliSearchModalTable(filtered);
+      document.getElementById('tblWaliSearchModalBody').innerHTML = rows || '<tr><td colspan="4" class="text-center text-muted">Wali tidak ditemukan.</td></tr>';
     };
 
-    window.selectWaliFromModal = function(idWali, encodedNama) {
-      const namaWali = decodeURIComponent(encodedNama);
+    window.selectWaliFromModal = function(idWali, namaWaliEncoded) {
       const mode = document.getElementById('targetFormWaliMode').value;
-      
+      const namaWali = decodeURIComponent(namaWaliEncoded);
+
       if (mode === 'new') {
-        const inputId = document.getElementById('newSantriWali');
-        inputId.value = idWali;
-        inputId.title = `Terpilih: ${namaWali} (${idWali})`;
-      } else if (mode === 'edit') {
-        const inputId = document.getElementById('editSantriWali');
-        inputId.value = idWali;
-        inputId.title = `Terpilih: ${namaWali} (${idWali})`;
+        document.getElementById('addSantriWaliId').value = idWali;
+        document.getElementById('addSantriWaliName').value = namaWali;
+      } else {
+        document.getElementById('editSantriWali').value = idWali;
       }
 
       bootstrap.Modal.getInstance(document.getElementById('waliSearchModal')).hide();
     };
 
-    window.addSantri = async function(e) {
+    window.submitAddSantri = async function(e) {
       e.preventDefault();
-      const idWaliVal = document.getElementById('newSantriWali').value;
-      if (!idWaliVal) { alert('Silakan pilih ID Wali Santri terlebih dahulu!'); return; }
-
       try {
         await addDoc(collection(db, "siswa"), {
-          nis: document.getElementById('newSantriNis').value,
-          nama_siswa: document.getElementById('newSantriNama').value,
-          id_kelas: document.getElementById('newSantriKelas').value,
-          id_wali: idWaliVal,
-          status_siswa: document.getElementById('newSantriStatus').value
+          nis: document.getElementById('addSantriNis').value,
+          nama_siswa: document.getElementById('addSantriNama').value,
+          id_kelas: document.getElementById('addSantriKelas').value,
+          id_wali: document.getElementById('addSantriWaliId').value,
+          status_siswa: 'Aktif'
         });
-        await logSystemActivity(`Admin menambah santri baru: ${document.getElementById('newSantriNama').value}`);
-        alert('Santri berhasil ditambahkan!');
+        await logSystemActivity(`Menambahkan santri baru`);
+        alert('Data santri berhasil ditambahkan!');
         renderAdminSantri();
       } catch (err) {
         alert('Gagal menambah santri: ' + err.message);
       }
     };
 
-    window.openModalEditSantri = async function(docId, nis, nama, kelas, wali, status) {
+    window.openModalEditSantri = async function(docId, nis, nama, kelas, idWali, status) {
       document.getElementById('editSantriDocId').value = docId;
-      document.getElementById('editSantriNis').value = decodeURIComponent(nis);
+      document.getElementById('editSantriNis').value = nis;
       document.getElementById('editSantriNama').value = decodeURIComponent(nama);
-      document.getElementById('editSantriWali').value = wali;
-      document.getElementById('editSantriStatus').value = status;
-      
       document.getElementById('editSantriKelas').innerHTML = await getKelasDropdownOptions(kelas, false);
+      document.getElementById('editSantriWali').value = idWali;
+      document.getElementById('editSantriStatus').value = status;
       new bootstrap.Modal(document.getElementById('editSantriModal')).show();
     };
 
     window.submitUpdateSantri = async function() {
       const docId = document.getElementById('editSantriDocId').value;
-      const idWaliVal = document.getElementById('editSantriWali').value;
-      if (!idWaliVal) { alert('ID Wali Santri tidak boleh kosong!'); return; }
-
       try {
         await updateDoc(doc(db, "siswa", docId), {
           nis: document.getElementById('editSantriNis').value,
           nama_siswa: document.getElementById('editSantriNama').value,
           id_kelas: document.getElementById('editSantriKelas').value,
-          id_wali: idWaliVal,
+          id_wali: document.getElementById('editSantriWali').value,
           status_siswa: document.getElementById('editSantriStatus').value
         });
-        await logSystemActivity(`Admin memperbarui data santri`);
+        await logSystemActivity(`Update data santri`);
         alert('Data santri berhasil diperbarui!');
         bootstrap.Modal.getInstance(document.getElementById('editSantriModal')).hide();
         renderAdminSantri();
@@ -2427,33 +2422,32 @@
     };
 
     window.deleteSantri = async function(docId) {
-      if (confirm('Yakin ingin menghapus santri ini?')) {
-        try {
-          await deleteDoc(doc(db, "siswa", docId));
-          await logSystemActivity(`Admin menghapus data santri ID ${docId}`);
-          alert('Santri berhasil dihapus.');
-          renderAdminSantri();
-        } catch (err) {
-          alert('Gagal menghapus: ' + err.message);
-        }
+      if (!confirm('Apakah Anda yakin ingin menghapus santri ini?')) return;
+      try {
+        await deleteDoc(doc(db, "siswa", docId));
+        await logSystemActivity(`Menghapus data santri`);
+        alert('Santri berhasil dihapus!');
+        renderAdminSantri();
+      } catch (err) {
+        alert('Gagal menghapus santri: ' + err.message);
       }
     };
 
-    // --- 4.3 Penugasan Guru Kelas (`adminGuruMapping`) ---
+    // --- 4.3 Penugasan Guru Kelas (Admin) ---
     async function renderAdminGuruMapping() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Guru...`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Penugasan Guru...`;
 
-      const snap = await getDocs(collection(db, "users"));
+      const snapG = await getDocs(query(collection(db, "users"), where("role", "==", "guru")));
+      let guruOptions = '<option value="">-- Pilih Guru --</option>';
       let guruList = [];
-      snap.forEach(d => {
-        const u = d.data();
-        if (u.role === 'guru') {
-          guruList.push({ docId: d.id, ...u });
-        }
+      snapG.forEach(d => {
+        const g = d.data();
+        guruList.push({ id_user: d.id, ...g });
+        guruOptions += `<option value="${d.id}">${g.nama} (Username: ${g.username}) - Kelas Saat Ini: ${g.id_kelas || '-'}</option>`;
       });
 
-      const kelasDropdown = await getKelasDropdownOptions('', true);
+      const kelasOptions = await getKelasDropdownOptions('', false);
 
       let rows = '';
       let no = 1;
@@ -2461,45 +2455,45 @@
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
-            <td><strong>${g.nama}</strong> (${g.username})</td>
-            <td>
-              <select class="form-select form-select-sm kelas-guru-select" data-id="${g.docId}">
-                ${kelasDropdown.replace(`value="${g.id_kelas}"`, `value="${g.id_kelas}" selected`)}
-              </select>
-            </td>
-            <td class="text-center">
-              <button class="btn btn-sm btn-success px-3" onclick="saveGuruMapping('${g.docId}')">Simpan</button>
-            </td>
+            <td><strong>${g.nama}</strong></td>
+            <td>${g.username}</td>
+            <td class="text-center"><span class="badge bg-success fs-6">${g.id_kelas || 'Belum ditugaskan'}</span></td>
           </tr>
         `;
       });
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-person-badge text-success me-2"></i> Penugasan Guru & Alokasi Kelas</h5>
-          <p class="text-muted small">Tentukan kelas binaan untuk masing-masing guru pengajar di TPQ.</p>
-          <div class="table-responsive mt-3">
-            <table class="table table-bordered align-middle">
-              <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th>Nama Guru</th><th>Kelas Binaan Pengampu</th><th width="120" class="text-center">Aksi</th></tr>
-              </thead>
-              <tbody>${rows || '<tr><td colspan="4" class="text-center text-muted">Tidak ada akun guru terdaftar.</td></tr>'}</tbody>
-            </table>
-          </div>
+          <h5><i class="bi bi-person-badge text-success me-2"></i> Penugasan Guru Kelas</h5>
+          <hr>
+          <form onsubmit="submitAssignGuru(event)" class="mb-4 bg-light p-3 rounded border">
+            <div class="mb-3"><label class="form-label fw-bold">Pilih Guru</label><select id="assignGuruId" class="form-select border-success" required>${guruOptions}</select></div>
+            <div class="mb-3"><label class="form-label fw-bold">Tugaskan ke Kelas</label><select id="assignKelasId" class="form-select border-success" required>${kelasOptions}</select></div>
+            <button type="submit" class="btn btn-success"><i class="bi bi-link-45deg me-1"></i> Simpan Penugasan Guru</button>
+          </form>
+
+          <h6 class="fw-bold text-success mb-3">Daftar Penugasan Guru Kelas Saat Ini</h6>
+          <table class="table table-bordered align-middle">
+            <thead class="table-success">
+              <tr><th width="40" class="text-center">No</th><th>Nama Guru</th><th>Username</th><th width="180" class="text-center">Kelas Yang Diampu</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="4" class="text-center">Belum ada data guru.</td></tr>'}</tbody>
+          </table>
         </div>
       `;
     }
 
-    window.saveGuruMapping = async function(docId) {
-      const selectEl = document.querySelector(`.kelas-guru-select[data-id="${docId}"]`);
-      const selectedKelas = selectEl ? selectEl.value : '';
+    window.submitAssignGuru = async function(e) {
+      e.preventDefault();
+      const idGuru = document.getElementById('assignGuruId').value;
+      const idKelas = document.getElementById('assignKelasId').value;
       try {
-        await updateDoc(doc(db, "users", docId), { id_kelas: selectedKelas });
-        await logSystemActivity(`Admin memperbarui penugasan guru kelas`);
-        alert('Penugasan kelas guru berhasil diperbarui!');
+        await updateDoc(doc(db, "users", idGuru), { id_kelas: idKelas });
+        await logSystemActivity(`Menugaskan guru ke kelas ${idKelas}`);
+        alert('Penugasan guru kelas berhasil disimpan!');
         renderAdminGuruMapping();
-      } catch (e) {
-        alert('Gagal menyimpan: ' + e.message);
+      } catch (err) {
+        alert('Gagal menugaskan guru: ' + err.message);
       }
     };
 
@@ -2508,84 +2502,68 @@
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Users...`;
 
-      const kelasOptionsHtml = await getKelasDropdownOptions('', true);
+      const kelasOptions = await getKelasDropdownOptions('', true);
 
       const snap = await getDocs(collection(db, "users"));
       let usersList = [];
-      snap.forEach(d => {
-        const u = d.data();
-        if (u.role !== 'superadmin') {
-          usersList.push({ docId: d.id, ...u });
-        }
-      });
+      snap.forEach(d => usersList.push({ docId: d.id, ...d.data() }));
 
-      usersList.sort((a, b) => a.nama.localeCompare(b.nama));
       window.rawUsersListCache = usersList;
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-people text-success me-2"></i> Kelola User Pengguna</h5>
+          <h5><i class="bi bi-people text-success me-2"></i> Kelola User Sistem</h5>
           <hr>
-          <form onsubmit="addUser(event)" class="row g-2 mb-4 bg-light p-3 rounded border">
-            <h6 class="fw-bold text-success">Tambah User Baru</h6>
-            <div class="col-md-2"><input type="text" id="newUsername" class="form-control" required placeholder="Username"></div>
-            <div class="col-md-2"><input type="password" id="newPass" class="form-control" required placeholder="Password"></div>
-            <div class="col-md-3"><input type="text" id="newNama" class="form-control" required placeholder="Nama Lengkap"></div>
-            <div class="col-md-2">
-              <select id="newRole" class="form-select">
-                <option value="guru">Guru</option>
-                <option value="walisiswa">Wali Siswa</option>
-                <option value="admin">Admin</option>
-                <option value="kepalasekolah">Kepala Sekolah</option>
-              </select>
-            </div>
-            <div class="col-md-2"><select id="newKelas" class="form-select">${kelasOptionsHtml}</select></div>
-            <div class="col-md-1"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
-          </form>
+          <ul class="nav nav-tabs" id="adminUserNav">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabAddUser">Tambah User Baru</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabListUser">Daftar User Sistem</a></li>
+          </ul>
 
-          <h6 class="fw-bold text-success mb-3">Daftar Pengguna Aktif</h6>
-          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
-            <div class="col-md-4">
-              <label class="form-label fw-bold mb-1">Filter Role:</label>
-              <select id="filterRoleUser" class="form-select border-success" onchange="filterUsersTable()">
-                <option value="ALL">-- Semua Role --</option>
-                <option value="guru">Guru</option>
-                <option value="walisiswa">Wali Siswa</option>
-                <option value="admin">Admin</option>
-                <option value="kepalasekolah">Kepala Sekolah</option>
-              </select>
+          <div class="tab-content pt-3">
+            <div class="tab-pane fade show active" id="tabAddUser">
+              <form onsubmit="submitAddUser(event)">
+                <div class="mb-3"><label class="form-label fw-bold">Username</label><input type="text" id="addUserUsername" class="form-control" required placeholder="Username"></div>
+                <div class="mb-3"><label class="form-label fw-bold">Password</label><input type="password" id="addUserPass" class="form-control" required placeholder="Password"></div>
+                <div class="mb-3"><label class="form-label fw-bold">Nama Lengkap</label><input type="text" id="addUserNama" class="form-control" required placeholder="Nama Pengguna"></div>
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Role Akses</label>
+                  <select id="addUserRole" class="form-select">
+                    <option value="guru">Guru Pengajar</option>
+                    <option value="walisiswa">Wali Siswa</option>
+                    <option value="admin">Admin System</option>
+                    <option value="kepalasekolah">Kepala Sekolah</option>
+                  </select>
+                </div>
+                <div class="mb-3"><label class="form-label fw-bold">Kelas (Untuk Guru)</label><select id="addUserKelas" class="form-select">${kelasOptions}</select></div>
+                <button type="submit" class="btn btn-success"><i class="bi bi-person-plus me-1"></i> Tambah User</button>
+              </form>
             </div>
-            <div class="col-md-8">
-              <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
-              <input type="text" id="searchUsersInput" class="form-control border-success" placeholder="Cari nama atau username..." onkeyup="filterUsersTable()">
-            </div>
-          </div>
 
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-              <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th>Username</th><th>Nama Lengkap</th><th width="130">Role</th><th width="120">Kelas</th><th width="120" class="text-center">Aksi</th></tr>
-              </thead>
-              <tbody id="tblUsersBody"></tbody>
-            </table>
+            <div class="tab-pane fade" id="tabListUser">
+              <div class="mb-3">
+                <input type="text" id="searchUserInput" class="form-control border-success" placeholder="Ketik nama / username / role untuk mencari..." onkeyup="filterUserTable()">
+              </div>
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                  <thead class="table-success">
+                    <tr><th width="40" class="text-center">No</th><th>Username</th><th>Nama Lengkap</th><th width="120" class="text-center">Role</th><th width="100" class="text-center">Kelas</th><th width="120" class="text-center">Aksi</th></tr>
+                  </thead>
+                  <tbody id="tblUsersBody"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       `;
 
-      filterUsersTable();
+      filterUserTable();
     }
 
-    window.filterUsersTable = function() {
-      const selectedRole = document.getElementById('filterRoleUser')?.value;
-      const searchQuery = document.getElementById('searchUsersInput')?.value.toLowerCase().trim();
-
-      let filtered = window.rawUsersListCache.filter(u => {
-        const matchRole = (selectedRole === 'ALL' || !selectedRole || u.role === selectedRole);
-        const matchText = !searchQuery || 
-          u.username.toLowerCase().includes(searchQuery) ||
-          u.nama.toLowerCase().includes(searchQuery);
-        return matchRole && matchText;
-      });
+    window.filterUserTable = function() {
+      const q = document.getElementById('searchUserInput')?.value.toLowerCase().trim();
+      let filtered = window.rawUsersListCache.filter(u => 
+        !q || u.username.toLowerCase().includes(q) || u.nama.toLowerCase().includes(q) || u.role.toLowerCase().includes(q)
+      );
 
       let rows = '';
       let no = 1;
@@ -2595,10 +2573,10 @@
             <td class="text-center">${no++}</td>
             <td><strong>${u.username}</strong></td>
             <td>${u.nama}</td>
-            <td><span class="badge bg-secondary">${u.role}</span></td>
-            <td>${u.id_kelas || '-'}</td>
+            <td class="text-center"><span class="badge bg-success">${u.role}</span></td>
+            <td class="text-center">${u.id_kelas || '-'}</td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditUser('${u.docId}', '${encodeURIComponent(u.username)}', '${encodeURIComponent(u.password)}', '${encodeURIComponent(u.nama)}', '${u.role}', '${encodeURIComponent(u.id_kelas || '')}')">
+              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditUser('${u.docId}', '${u.username}', '${encodeURIComponent(u.nama)}', '${u.role}', '${u.id_kelas || ''}')">
                 <i class="bi bi-pencil-square"></i>
               </button>
               <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteUser('${u.docId}')">
@@ -2609,51 +2587,52 @@
         `;
       });
 
-      document.getElementById('tblUsersBody').innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">User tidak ditemukan.</td></tr>';
+      document.getElementById('tblUsersBody').innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">Data user tidak ditemukan.</td></tr>';
     };
 
-    window.addUser = async function(e) {
+    window.submitAddUser = async function(e) {
       e.preventDefault();
       try {
         await addDoc(collection(db, "users"), {
-          username: document.getElementById('newUsername').value,
-          password: document.getElementById('newPass').value,
-          nama: document.getElementById('newNama').value,
-          role: document.getElementById('newRole').value,
-          id_kelas: document.getElementById('newKelas').value || ''
+          username: document.getElementById('addUserUsername').value.trim(),
+          password: document.getElementById('addUserPass').value.trim(),
+          nama: document.getElementById('addUserNama').value.trim(),
+          role: document.getElementById('addUserRole').value,
+          id_kelas: document.getElementById('addUserKelas').value || ''
         });
-        await logSystemActivity(`Admin menambah user baru: ${document.getElementById('newUsername').value}`);
-        alert('User berhasil ditambahkan!');
+        await logSystemActivity(`Menambahkan user baru`);
+        alert('User baru berhasil ditambahkan!');
         renderAdminUsers();
       } catch (err) {
         alert('Gagal menambah user: ' + err.message);
       }
     };
 
-    window.openModalEditUser = async function(docId, u, p, n, r, k) {
+    window.openModalEditUser = async function(docId, u, n, r, k) {
       document.getElementById('editUserDocId').value = docId;
-      document.getElementById('editUserUsername').value = decodeURIComponent(u);
-      document.getElementById('editUserPass').value = decodeURIComponent(p);
+      document.getElementById('editUserUsername').value = u;
+      document.getElementById('editUserPass').value = '';
       document.getElementById('editUserNama').value = decodeURIComponent(n);
       document.getElementById('editUserRole').value = r;
-      
-      const currentKelas = decodeURIComponent(k);
-      document.getElementById('editUserKelas').innerHTML = await getKelasDropdownOptions(currentKelas, true);
-
+      document.getElementById('editUserKelas').innerHTML = await getKelasDropdownOptions(k, true);
       new bootstrap.Modal(document.getElementById('editUserModal')).show();
     };
 
     window.submitUpdateUser = async function() {
       const docId = document.getElementById('editUserDocId').value;
+      const pass = document.getElementById('editUserPass').value.trim();
+      let updatePayload = {
+        username: document.getElementById('editUserUsername').value.trim(),
+        nama: document.getElementById('editUserNama').value.trim(),
+        role: document.getElementById('editUserRole').value,
+        id_kelas: document.getElementById('editUserKelas').value || ''
+      };
+
+      if (pass) updatePayload.password = pass;
+
       try {
-        await updateDoc(doc(db, "users", docId), {
-          username: document.getElementById('editUserUsername').value,
-          password: document.getElementById('editUserPass').value,
-          nama: document.getElementById('editUserNama').value,
-          role: document.getElementById('editUserRole').value,
-          id_kelas: document.getElementById('editUserKelas').value
-        });
-        await logSystemActivity(`Admin memperbarui data user`);
+        await updateDoc(doc(db, "users", docId), updatePayload);
+        await logSystemActivity(`Update akun user`);
         alert('Data user berhasil diperbarui!');
         bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
         renderAdminUsers();
@@ -2663,96 +2642,38 @@
     };
 
     window.deleteUser = async function(docId) {
-      if (confirm('Yakin ingin menghapus user ini?')) {
-        try {
-          await deleteDoc(doc(db, "users", docId));
-          await logSystemActivity(`Admin menghapus user ID ${docId}`);
-          alert('User berhasil dihapus.');
-          renderAdminUsers();
-        } catch (err) {
-          alert('Gagal menghapus: ' + err.message);
-        }
+      if (!confirm('Apakah Anda yakin ingin menghapus user ini?')) return;
+      try {
+        await deleteDoc(doc(db, "users", docId));
+        await logSystemActivity(`Menghapus data user`);
+        alert('User berhasil dihapus!');
+        renderAdminUsers();
+      } catch (err) {
+        alert('Gagal menghapus user: ' + err.message);
       }
     };
 
     // --- 4.5 Manajemen Kelas (Admin) ---
     async function renderAdminKelas() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Kelas...`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Kelas...`;
 
       const snap = await getDocs(collection(db, "kelas"));
-      let kelasList = [];
-      snap.forEach(d => {
-        kelasList.push({ docId: d.id, ...d.data() });
-      });
-
-      if (kelasList.length === 0) {
-        kelasList = [
-          { docId: 'KLS-01', id_kelas: 'KLS-01', nama_kelas: 'Kelas 1 TPQ', keterangan: 'Kelas Dasar' }
-        ];
-      }
-
-      kelasList.sort((a, b) => a.id_kelas.localeCompare(b.id_kelas));
-      window.rawKelasListCache = kelasList;
-
-      main.innerHTML = `
-        <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-arrow-left-right text-success me-2"></i> Manajemen Kelas TPQ</h5>
-          <hr>
-          <form onsubmit="addKelas(event)" class="row g-2 mb-4 bg-light p-3 rounded border">
-            <h6 class="fw-bold text-success">Tambah Kelas Baru</h6>
-            <div class="col-md-3"><input type="text" id="newKelasId" class="form-control" required placeholder="ID Kelas (Contoh: KLS-02)"></div>
-            <div class="col-md-4"><input type="text" id="newKelasNama" class="form-control" required placeholder="Nama Kelas"></div>
-            <div class="col-md-4"><input type="text" id="newKelasKet" class="form-control" placeholder="Keterangan"></div>
-            <div class="col-md-1"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
-          </form>
-
-          <h6 class="fw-bold text-success mb-3">Daftar Kelas Aktif</h6>
-          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
-            <div class="col-md-12">
-              <label class="form-label fw-bold mb-1">Pencarian Kelas:</label>
-              <input type="text" id="searchKelasInput" class="form-control border-success" placeholder="Cari ID atau nama kelas..." onkeyup="filterKelasTable()">
-            </div>
-          </div>
-
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-              <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th width="120">ID Kelas</th><th>Nama Kelas</th><th>Keterangan</th><th width="120" class="text-center">Aksi</th></tr>
-              </thead>
-              <tbody id="tblKelasBody"></tbody>
-            </table>
-          </div>
-        </div>
-      `;
-
-      filterKelasTable();
-    }
-
-    window.filterKelasTable = function() {
-      const searchQuery = document.getElementById('searchKelasInput')?.value.toLowerCase().trim();
-
-      let filtered = window.rawKelasListCache.filter(k => {
-        return !searchQuery || 
-          k.id_kelas.toLowerCase().includes(searchQuery) ||
-          k.nama_kelas.toLowerCase().includes(searchQuery) ||
-          (k.keterangan && k.keterangan.toLowerCase().includes(searchQuery));
-      });
-
       let rows = '';
       let no = 1;
-      filtered.forEach(k => {
+      snap.forEach(d => {
+        const k = d.data();
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
-            <td><strong>${k.id_kelas}</strong></td>
-            <td>${k.nama_kelas}</td>
+            <td class="text-center fw-bold">${k.id_kelas}</td>
+            <td><strong>${k.nama_kelas}</strong></td>
             <td>${k.keterangan || '-'}</td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditKelas('${k.docId}', '${encodeURIComponent(k.id_kelas)}', '${encodeURIComponent(k.nama_kelas)}', '${encodeURIComponent(k.keterangan || '')}')">
+              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditKelas('${d.id}', '${k.id_kelas}', '${encodeURIComponent(k.nama_kelas)}', '${encodeURIComponent(k.keterangan || '')}')">
                 <i class="bi bi-pencil-square"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteKelas('${k.docId}')">
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteKelas('${d.id}')">
                 <i class="bi bi-trash"></i>
               </button>
             </td>
@@ -2760,31 +2681,49 @@
         `;
       });
 
-      document.getElementById('tblKelasBody').innerHTML = rows || '<tr><td colspan="5" class="text-center text-muted">Kelas tidak ditemukan.</td></tr>';
-    };
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-arrow-left-right text-success me-2"></i> Manajemen Kelas TPQ</h5>
+          <hr>
+          <form onsubmit="submitAddKelas(event)" class="mb-4 bg-light p-3 rounded border">
+            <div class="mb-3"><label class="form-label fw-bold">ID Kelas</label><input type="text" id="addKelasId" class="form-control" required placeholder="Contoh: KLS-01"></div>
+            <div class="mb-3"><label class="form-label fw-bold">Nama Kelas</label><input type="text" id="addKelasNama" class="form-control" required placeholder="Contoh: Kelas 1 TPQ Al-Muawanah"></div>
+            <div class="mb-3"><label class="form-label fw-bold">Keterangan Opsional</label><input type="text" id="addKelasKet" class="form-control" placeholder="Tingkat Pemula / Iqra"></div>
+            <button type="submit" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i> Tambah Kelas</button>
+          </form>
 
-    window.addKelas = async function(e) {
+          <h6 class="fw-bold text-success mb-3">Daftar Kelas Terdaftar</h6>
+          <table class="table table-bordered align-middle">
+            <thead class="table-success">
+              <tr><th width="40" class="text-center">No</th><th width="120" class="text-center">ID Kelas</th><th>Nama Kelas</th><th>Keterangan</th><th width="120" class="text-center">Aksi</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="5" class="text-center">Belum ada kelas terdaftar.</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    window.submitAddKelas = async function(e) {
       e.preventDefault();
-      const idK = document.getElementById('newKelasId').value;
       try {
-        await setDoc(doc(db, "kelas", idK), {
-          id_kelas: idK,
-          nama_kelas: document.getElementById('newKelasNama').value,
-          keterangan: document.getElementById('newKelasKet').value
+        await addDoc(collection(db, "kelas"), {
+          id_kelas: document.getElementById('addKelasId').value.trim(),
+          nama_kelas: document.getElementById('addKelasNama').value.trim(),
+          keterangan: document.getElementById('addKelasKet').value.trim()
         });
-        await logSystemActivity(`Admin menambah kelas baru: ${idK}`);
-        alert('Kelas berhasil ditambahkan!');
+        await logSystemActivity(`Menambahkan kelas baru`);
+        alert('Kelas baru berhasil ditambahkan!');
         renderAdminKelas();
       } catch (err) {
         alert('Gagal menambah kelas: ' + err.message);
       }
     };
 
-    window.openModalEditKelas = function(docId, idK, namaK, ket) {
+    window.openModalEditKelas = function(docId, idK, namaK, ketK) {
       document.getElementById('editKelasDocId').value = docId;
-      document.getElementById('editKelasId').value = decodeURIComponent(idK);
+      document.getElementById('editKelasId').value = idK;
       document.getElementById('editKelasNama').value = decodeURIComponent(namaK);
-      document.getElementById('editKelasKet').value = decodeURIComponent(ket);
+      document.getElementById('editKelasKet').value = decodeURIComponent(ketK);
       new bootstrap.Modal(document.getElementById('editKelasModal')).show();
     };
 
@@ -2792,11 +2731,11 @@
       const docId = document.getElementById('editKelasDocId').value;
       try {
         await updateDoc(doc(db, "kelas", docId), {
-          id_kelas: document.getElementById('editKelasId').value,
-          nama_kelas: document.getElementById('editKelasNama').value,
-          keterangan: document.getElementById('editKelasKet').value
+          id_kelas: document.getElementById('editKelasId').value.trim(),
+          nama_kelas: document.getElementById('editKelasNama').value.trim(),
+          keterangan: document.getElementById('editKelasKet').value.trim()
         });
-        await logSystemActivity(`Admin memperbarui data kelas`);
+        await logSystemActivity(`Update data kelas`);
         alert('Data kelas berhasil diperbarui!');
         bootstrap.Modal.getInstance(document.getElementById('editKelasModal')).hide();
         renderAdminKelas();
@@ -2806,42 +2745,37 @@
     };
 
     window.deleteKelas = async function(docId) {
-      if (confirm('Yakin ingin menghapus kelas ini?')) {
-        try {
-          await deleteDoc(doc(db, "kelas", docId));
-          await logSystemActivity(`Admin menghapus data kelas ${docId}`);
-          alert('Kelas berhasil dihapus.');
-          renderAdminKelas();
-        } catch (err) {
-          alert('Gagal menghapus: ' + err.message);
-        }
+      if (!confirm('Apakah Anda yakin ingin menghapus kelas ini?')) return;
+      try {
+        await deleteDoc(doc(db, "kelas", docId));
+        await logSystemActivity(`Menghapus data kelas`);
+        alert('Kelas berhasil dihapus!');
+        renderAdminKelas();
+      } catch (err) {
+        alert('Gagal menghapus kelas: ' + err.message);
       }
     };
 
-    // --- 4.6 Broadcast Pengumuman (`adminBroadcast`) ---
+    // --- 4.6 Broadcast Pengumuman (Admin) ---
     async function renderAdminBroadcast() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Broadcast...`;
 
       const snap = await getDocs(collection(db, "broadcast"));
-      let broadcastList = [];
-      snap.forEach(d => {
-        broadcastList.push({ docId: d.id, ...d.data() });
-      });
-
-      broadcastList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-
       let rows = '';
       let no = 1;
-      broadcastList.forEach(b => {
+      snap.forEach(d => {
+        const b = d.data();
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
-            <td>${b.tanggal}</td>
+            <td class="text-center">${b.tanggal}</td>
             <td><strong>${b.judul}</strong></td>
             <td>${b.pesan}</td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteBroadcast('${b.docId}')"><i class="bi bi-trash"></i> Hapus</button>
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteBroadcast('${d.id}')">
+                <i class="bi bi-trash"></i> Hapus
+              </button>
             </td>
           </tr>
         `;
@@ -2849,308 +2783,295 @@
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-megaphone text-success me-2"></i> Broadcast Pengumuman Lembaga</h5>
+          <h5><i class="bi bi-megaphone text-success me-2"></i> Broadcast Pengumuman TPQ</h5>
           <hr>
-          <form onsubmit="submitBroadcast(event)" class="mb-4 bg-light p-3 rounded border">
-            <h6 class="fw-bold text-success">Kirim Pengumuman Baru</h6>
-            <div class="mb-3"><label class="form-label fw-bold">Judul Pengumuman</label><input type="text" id="broadcastJudul" class="form-control" required placeholder="Contoh: Libur Madrasah Ramadhan"></div>
-            <div class="mb-3"><label class="form-label fw-bold">Isi Pengumuman</label><textarea id="broadcastPesan" class="form-control" rows="3" required placeholder="Tuliskan isi pengumuman..."></textarea></div>
-            <button type="submit" class="btn btn-success"><i class="bi bi-send me-1"></i> Kirim Broadcast ke Dashboard Wali & Guru</button>
+          <form onsubmit="submitAddBroadcast(event)" class="mb-4 bg-light p-3 rounded border">
+            <div class="mb-3"><label class="form-label fw-bold">Judul Pengumuman</label><input type="text" id="addBroadcastJudul" class="form-control" required placeholder="Judul Pengumuman"></div>
+            <div class="mb-3"><label class="form-label fw-bold">Isi Pesan Broadcast</label><textarea id="addBroadcastPesan" class="form-control" rows="3" required placeholder="Pesan untuk semua wali dan guru..."></textarea></div>
+            <button type="submit" class="btn btn-success"><i class="bi bi-send me-1"></i> Terbitkan Broadcast</button>
           </form>
 
-          <h6 class="fw-bold text-success mb-3">Riwayat Pengumuman Aktif</h6>
-          <div class="table-responsive">
-            <table class="table table-bordered align-middle">
-              <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th width="110">Tanggal</th><th width="200">Judul</th><th>Isi Pengumuman</th><th width="90" class="text-center">Aksi</th></tr>
-              </thead>
-              <tbody>${rows || '<tr><td colspan="5" class="text-center text-muted">Belum ada broadcast pengumuman.</td></tr>'}</tbody>
-            </table>
-          </div>
+          <h6 class="fw-bold text-success mb-3">Pengumuman Aktif</h6>
+          <table class="table table-bordered align-middle">
+            <thead class="table-success">
+              <tr><th width="40" class="text-center">No</th><th width="110" class="text-center">Tanggal</th><th>Judul</th><th>Isi Pesan</th><th width="80" class="text-center">Aksi</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="5" class="text-center">Belum ada pengumuman broadcast.</td></tr>'}</tbody>
+          </table>
         </div>
       `;
     }
 
-    window.submitBroadcast = async function(e) {
+    window.submitAddBroadcast = async function(e) {
       e.preventDefault();
       try {
         await addDoc(collection(db, "broadcast"), {
-          tanggal: new Date().toISOString().split('T')[0],
-          judul: document.getElementById('broadcastJudul').value,
-          pesan: document.getElementById('broadcastPesan').value,
-          created_by: window.currentUser.nama
+          judul: document.getElementById('addBroadcastJudul').value,
+          pesan: document.getElementById('addBroadcastPesan').value,
+          tanggal: new Date().toISOString().split('T')[0]
         });
-        await logSystemActivity(`Admin mengirim broadcast pengumuman`);
-        alert('Broadcast pengumuman berhasil dikirim!');
+        await logSystemActivity(`Terbitkan broadcast pengumuman`);
+        alert('Broadcast pengumuman berhasil diterbitkan!');
         renderAdminBroadcast();
       } catch (err) {
-        alert('Gagal mengirim: ' + err.message);
+        alert('Gagal menerbitkan: ' + err.message);
       }
     };
 
     window.deleteBroadcast = async function(docId) {
-      if (confirm('Yakin ingin menghapus pengumuman ini?')) {
-        try {
-          await deleteDoc(doc(db, "broadcast", docId));
-          await logSystemActivity(`Admin menghapus broadcast ID ${docId}`);
-          alert('Pengumuman berhasil dihapus.');
-          renderAdminBroadcast();
-        } catch (err) {
-          alert('Gagal menghapus: ' + err.message);
-        }
+      if (!confirm('Hapus pengumuman ini?')) return;
+      try {
+        await deleteDoc(doc(db, "broadcast", docId));
+        await logSystemActivity(`Hapus broadcast pengumuman`);
+        alert('Broadcast berhasil dihapus!');
+        renderAdminBroadcast();
+      } catch (err) {
+        alert('Gagal menghapus: ' + err.message);
       }
     };
 
-    // --- 4.7 Tahun Ajaran & Semester (`adminTahunAjaran`) ---
+    // --- 4.7 Tahun Ajaran & Semester (Admin) ---
     async function renderAdminTahunAjaran() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="card card-dashboard p-4">
-        <h5><i class="bi bi-calendar3 text-success me-2"></i> Manajemen Tahun Ajaran & Semester</h5>
-        <hr>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <div class="p-3 bg-light rounded border">
-              <h6 class="fw-bold text-success">Status Tahun Ajaran Aktif</h6>
-              <p class="mb-2 text-muted small">Tahun ajaran saat ini digunakan untuk pembukuan absensi, nilai, dan rekapitulasi.</p>
-              <div class="mb-3">
-                <label class="form-label fw-bold">Tahun Ajaran:</label>
-                <select id="selectTahunAjaran" class="form-select border-success">
-                  <option value="2025/2026">2025 / 2026</option>
-                  <option value="2026/2027" selected>2026 / 2027</option>
-                  <option value="2027/2028">2027 / 2028</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label fw-bold">Semester:</label>
-                <select id="selectSemester" class="form-select border-success">
-                  <option value="Ganjil">Semester Ganjil</option>
-                  <option value="Genap" selected>Semester Genap</option>
-                </select>
-              </div>
-              <button class="btn btn-success" onclick="saveTahunAjaran()"><i class="bi bi-save me-1"></i> Simpan Konfigurasi</button>
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Pengaturan Tahun Ajaran...`;
+
+      const docRef = doc(db, "settings", "tahun_ajaran");
+      const snap = await getDoc(docRef);
+      const data = snap.exists() ? snap.data() : { tahun: "2025/2026", semester: "Ganjil" };
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-calendar3 text-success me-2"></i> Pengaturan Tahun Ajaran & Semester</h5>
+          <hr>
+          <form onsubmit="submitSaveTahunAjaran(event)" class="bg-light p-3 rounded border style="max-width:500px;">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Tahun Ajaran Aktif</label>
+              <input type="text" id="settingTahun" class="form-control" value="${data.tahun}" required placeholder="Contoh: 2025/2026">
             </div>
-          </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Semester Aktif</label>
+              <select id="settingSemester" class="form-select">
+                <option value="Ganjil" ${data.semester === 'Ganjil' ? 'selected' : ''}>Ganjil</option>
+                <option value="Genap" ${data.semester === 'Genap' ? 'selected' : ''}>Genap</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i> Simpan Pengaturan</button>
+          </form>
         </div>
-      </div>`;
+      `;
     }
 
-    window.saveTahunAjaran = async function() {
-      const ta = document.getElementById('selectTahunAjaran').value;
-      const sm = document.getElementById('selectSemester').value;
-      await logSystemActivity(`Admin mengubah tahun ajaran ke ${ta} (${sm})`);
-      alert(`Tahun ajaran berhasil diatur ke ${ta} - Semester ${sm}!`);
+    window.submitSaveTahunAjaran = async function(e) {
+      e.preventDefault();
+      try {
+        await setDoc(doc(db, "settings", "tahun_ajaran"), {
+          tahun: document.getElementById('settingTahun').value.trim(),
+          semester: document.getElementById('settingSemester').value
+        });
+        await logSystemActivity(`Update pengaturan tahun ajaran dan semester`);
+        alert('Pengaturan tahun ajaran berhasil disimpan!');
+      } catch (err) {
+        alert('Gagal menyimpan pengaturan: ' + err.message);
+      }
     };
 
     // --- 4.8 Moderasi Masukan (Admin) ---
     async function renderAdminModerasi() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Masukan...`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Moderasi Masukan...`;
 
       const snap = await getDocs(collection(db, "masukan_wali"));
-      let moderasiList = [];
-      snap.forEach(d => {
-        moderasiList.push({ docId: d.id, ...d.data() });
-      });
-
-      moderasiList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-      window.rawModerasiListCache = moderasiList;
-
-      main.innerHTML = `
-        <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-shield-check text-success me-2"></i> Moderasi Masukan & Pertanyaan Wali</h5>
-          <hr>
-          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
-            <div class="col-md-4">
-              <label class="form-label fw-bold mb-1">Filter Status:</label>
-              <select id="filterStatusModerasi" class="form-select border-success" onchange="filterModerasiTable()">
-                <option value="ALL">-- Semua Status --</option>
-                <option value="Pending">Pending</option>
-                <option value="Forwarded to Admin">Forwarded to Admin</option>
-                <option value="Approved">Approved</option>
-                <option value="Public">Public</option>
-                <option value="Private">Private</option>
-              </select>
-            </div>
-            <div class="col-md-8">
-              <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
-              <input type="text" id="searchModerasiInput" class="form-control border-success" placeholder="Cari subjek atau isi pesan..." onkeyup="filterModerasiTable()">
-            </div>
-          </div>
-
-          <div class="table-responsive">
-            <table class="table table-bordered align-middle">
-              <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th width="100">Tanggal</th><th>Subjek & Pesan</th><th width="140" class="text-center">Status</th><th width="160" class="text-center">Aksi Moderasi</th></tr>
-              </thead>
-              <tbody id="tblModerasiBody"></tbody>
-            </table>
-          </div>
-        </div>
-      `;
-
-      filterModerasiTable();
-    }
-
-    window.filterModerasiTable = function() {
-      const selectedStatus = document.getElementById('filterStatusModerasi')?.value;
-      const searchQuery = document.getElementById('searchModerasiInput')?.value.toLowerCase().trim();
-
-      let filtered = window.rawModerasiListCache.filter(p => {
-        const matchStatus = (selectedStatus === 'ALL' || !selectedStatus || p.status === selectedStatus);
-        const matchText = !searchQuery || 
-          p.subjek.toLowerCase().includes(searchQuery) ||
-          p.pesan.toLowerCase().includes(searchQuery);
-        return matchStatus && matchText;
-      });
-
       let rows = '';
       let no = 1;
-      filtered.forEach(p => {
+
+      snap.forEach(d => {
+        const item = d.data();
         let statusBadge = '';
-        if (p.status === 'Pending') statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
-        else if (p.status === 'Forwarded to Admin') statusBadge = '<span class="badge bg-info text-dark">Diteruskan Admin</span>';
-        else if (p.status === 'Approved') statusBadge = '<span class="badge bg-primary">Approved</span>';
-        else if (p.status === 'Public') statusBadge = '<span class="badge bg-success">Public</span>';
-        else statusBadge = `<span class="badge bg-secondary">${p.status}</span>`;
+        if (item.status === 'Pending') statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+        else if (item.status === 'Approved' || item.status === 'Public') statusBadge = '<span class="badge bg-success">Public</span>';
+        else if (item.status === 'Private') statusBadge = '<span class="badge bg-secondary">Private</span>';
+        else statusBadge = `<span class="badge bg-info text-dark">${item.status}</span>`;
 
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
-            <td>${p.tanggal}</td>
-            <td><strong>${p.subjek}</strong><p class="mb-0 text-muted small">${p.pesan}</p></td>
+            <td class="text-center">${item.tanggal}</td>
+            <td><strong>${item.subjek}</strong></td>
+            <td>${item.pesan}</td>
+            <td>${item.jawaban || '<em>Belum dijawab</em>'}</td>
             <td class="text-center">${statusBadge}</td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-success p-1 px-2 me-1 mb-1" onclick="modPesan('${p.docId}', 'Approved')">Approve</button>
-              <button class="btn btn-sm btn-outline-info p-1 px-2 me-1 mb-1" onclick="modPesan('${p.docId}', 'Public')">Publish</button>
-              <button class="btn btn-sm btn-outline-danger p-1 px-2 mb-1" onclick="deleteModerasi('${p.docId}')"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-success p-1 py-0 me-1" onclick="updateStatusModerasi('${d.id}', 'Public')">Public</button>
+              <button class="btn btn-sm btn-secondary p-1 py-0 me-1" onclick="updateStatusModerasi('${d.id}', 'Private')">Private</button>
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteMasukan('${d.id}')"><i class="bi bi-trash"></i></button>
             </td>
           </tr>
         `;
       });
 
-      document.getElementById('tblModerasiBody').innerHTML = rows || '<tr><td colspan="5" class="text-center text-muted">Data moderasi tidak ditemukan.</td></tr>';
-    };
-
-    window.modPesan = async function(id, status) {
-      try {
-        await updateDoc(doc(db, "masukan_wali", id), { status: status });
-        await logSystemActivity(`Admin memoderasi pesan wali ke status ${status}`);
-        alert(`Status berhasil diubah menjadi ${status}`);
-        renderAdminModerasi();
-      } catch (err) {
-        alert('Gagal memoderasi: ' + err.message);
-      }
-    };
-
-    window.deleteModerasi = async function(docId) {
-      if (confirm('Yakin ingin menghapus masukan ini?')) {
-        try {
-          await deleteDoc(doc(db, "masukan_wali", docId));
-          await logSystemActivity(`Admin menghapus masukan wali ID ${docId}`);
-          alert('Masukan berhasil dihapus.');
-          renderAdminModerasi();
-        } catch (err) {
-          alert('Gagal menghapus: ' + err.message);
-        }
-      }
-    };
-
-    // --- 4.9 Audit Log Aktivitas (`adminLogs`) ---
-    async function renderAdminLogs() {
-      const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Audit Log...`;
-
-      const snap = await getDocs(collection(db, "system_logs"));
-      let logsList = [];
-      snap.forEach(d => {
-        logsList.push({ docId: d.id, ...d.data() });
-      });
-
-      logsList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-      window.rawLogsListCache = logsList;
-
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-clock-history text-success me-2"></i> Audit Log Aktivitas Sistem</h5>
+          <h5><i class="bi bi-shield-check text-success me-2"></i> Moderasi Masukan & Pertanyaan Wali</h5>
           <hr>
-          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
-            <div class="col-md-12">
-              <label class="form-label fw-bold mb-1">Pencarian Log:</label>
-              <input type="text" id="searchLogsInput" class="form-control border-success" placeholder="Cari aktivitas atau nama pengguna..." onkeyup="filterLogsTable()">
-            </div>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-              <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th width="160">Waktu</th><th width="150">Pengguna</th><th width="100">Role</th><th>Aktivitas</th></tr>
-              </thead>
-              <tbody id="tblLogsBody"></tbody>
-            </table>
-          </div>
+          <table class="table table-bordered align-middle">
+            <thead class="table-success">
+              <tr><th width="40" class="text-center">No</th><th width="100">Tanggal</th><th>Subjek</th><th>Pesan Wali</th><th>Jawaban</th><th width="110" class="text-center">Status</th><th width="180" class="text-center">Aksi Moderasi</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="7" class="text-center">Belum ada masukan untuk dimoderasi.</td></tr>'}</tbody>
+          </table>
         </div>
       `;
-
-      filterLogsTable();
     }
 
-    window.filterLogsTable = function() {
-      const searchQuery = document.getElementById('searchLogsInput')?.value.toLowerCase().trim();
+    window.updateStatusModerasi = async function(docId, newStatus) {
+      try {
+        await updateDoc(doc(db, "masukan_wali", docId), { status: newStatus });
+        await logSystemActivity(`Moderasi masukan wali ke status ${newStatus}`);
+        alert(`Status masukan diubah menjadi ${newStatus}!`);
+        renderAdminModerasi();
+      } catch (err) {
+        alert('Gagal mengupdate moderasi: ' + err.message);
+      }
+    };
 
-      let filtered = window.rawLogsListCache.filter(l => {
-        return !searchQuery || 
-          l.user.toLowerCase().includes(searchQuery) ||
-          l.aktivitas.toLowerCase().includes(searchQuery) ||
-          l.role.toLowerCase().includes(searchQuery);
-      });
+    window.deleteMasukan = async function(docId) {
+      if (!confirm('Hapus masukan ini dari sistem?')) return;
+      try {
+        await deleteDoc(doc(db, "masukan_wali", docId));
+        await logSystemActivity(`Hapus masukan wali`);
+        alert('Masukan berhasil dihapus!');
+        renderAdminModerasi();
+      } catch (err) {
+        alert('Gagal menghapus: ' + err.message);
+      }
+    };
+
+    // --- 4.9 Audit Log Aktivitas Sistem (Admin) ---
+    async function renderAdminLogs() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Log Aktivitas...`;
+
+      const snap = await getDocs(collection(db, "system_logs"));
+      let logs = [];
+      snap.forEach(d => logs.push(d.data()));
+
+      logs.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
 
       let rows = '';
       let no = 1;
-      filtered.forEach(l => {
-        const tglFormatted = new Date(l.tanggal).toLocaleString('id-ID');
+      logs.forEach(l => {
+        const dateFormatted = new Date(l.tanggal).toLocaleString('id-ID');
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
-            <td><small>${tglFormatted}</small></td>
-            <td><strong>${l.user}</strong></td>
-            <td><span class="badge bg-secondary">${l.role}</span></td>
+            <td class="text-center">${dateFormatted}</td>
+            <td><strong>${l.user}</strong> <small class="text-muted">(${l.role})</small></td>
             <td>${l.aktivitas}</td>
           </tr>
         `;
       });
 
-      document.getElementById('tblLogsBody').innerHTML = rows || '<tr><td colspan="5" class="text-center text-muted">Log aktivitas tidak ditemukan.</td></tr>';
-    };
-
-    // === 5. KEPALA SEKOLAH FITUR ===
-    async function renderKepalaReport() {
-      const snapA = await getDocs(collection(db, "absensi"));
-      const snapI = await getDocs(collection(db, "infaq"));
-      const snapM = await getDocs(collection(db, "masukan_wali"));
-
-      document.getElementById('mainContent').innerHTML = `
+      main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5>Monitoring Global Lembaga TPQ</h5>
+          <h5><i class="bi bi-clock-history text-success me-2"></i> Audit Log Aktivitas Sistem</h5>
           <hr>
-          <div class="row text-center mb-4">
-            <div class="col-md-4"><div class="p-3 border rounded bg-light"><h6>Total Record Absensi</h6><h4>${snapA.size}</h4></div></div>
-            <div class="col-md-4"><div class="p-3 border rounded bg-light"><h6>Total Transaksi Infaq</h6><h4>${snapI.size}</h4></div></div>
-            <div class="col-md-4"><div class="p-3 border rounded bg-light"><h6>Total Masukan Wali</h6><h4>${snapM.size}</h4></div></div>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th width="180" class="text-center">Waktu & Tanggal</th><th>User / Operator</th><th>Aktivitas Yang Dilakukan</th></tr>
+              </thead>
+              <tbody>${rows || '<tr><td colspan="4" class="text-center text-muted">Belum ada riwayat log aktivitas.</td></tr>'}</tbody>
+            </table>
           </div>
         </div>
       `;
     }
 
-    // AUTO RESTORE SESSION
-    const savedUser = localStorage.getItem('tpq_user');
-    if (savedUser) {
-      window.currentUser = JSON.parse(savedUser);
-      if (window.currentUser.list_siswa && window.currentUser.list_siswa.length > 0) {
-        window.selectedChildId = window.currentUser.list_siswa[0].id_siswa;
-      }
-      initApp();
+    // === 5. MONITORING LEMBAGA (KEPALA SEKOLAH) ===
+    async function renderKepalaReport() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Monitoring Lembaga...`;
+
+      const snapS = await getDocs(collection(db, "siswa"));
+      const snapG = await getDocs(query(collection(db, "users"), where("role", "==", "guru")));
+      const snapK = await getDocs(collection(db, "kelas"));
+      const snapI = await getDocs(collection(db, "infaq"));
+
+      let totalInfaq = 0;
+      snapI.forEach(d => { totalInfaq += Number(d.data().jumlah) || 0; });
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const snapA = await getDocs(query(collection(db, "absensi"), where("tanggal", "==", todayStr)));
+
+      let statsToday = { masuk: 0, izin: 0, sakit: 0, alpa: 0 };
+      snapA.forEach(d => {
+        const st = (d.data().status || '').toLowerCase();
+        if (st === 'masuk') statsToday.masuk++;
+        else if (st === 'izin') statsToday.izin++;
+        else if (st === 'sakit') statsToday.sakit++;
+        else if (st === 'alpa') statsToday.alpa++;
+      });
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-file-earmark-bar-graph text-success me-2"></i> Laporan Eksekutif Monitoring TPQ Al-Muawanah</h5>
+          <hr>
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="p-3 bg-light rounded border text-center">
+                <h6 class="text-muted mb-1">Total Santri</h6>
+                <h3 class="fw-bold text-success mb-0">${snapS.size}</h3>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 bg-light rounded border text-center">
+                <h6 class="text-muted mb-1">Total Guru Pengajar</h6>
+                <h3 class="fw-bold text-primary mb-0">${snapG.size}</h3>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 bg-light rounded border text-center">
+                <h6 class="text-muted mb-1">Total Kelas</h6>
+                <h3 class="fw-bold text-info mb-0">${snapK.size}</h3>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 bg-light rounded border text-center">
+                <h6 class="text-muted mb-1">Total Infaq Terkumpul</h6>
+                <h4 class="fw-bold text-success mb-0">Rp ${totalInfaq.toLocaleString('id-ID')}</h4>
+              </div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-success mb-3"><i class="bi bi-pie-chart me-1"></i> Ringkasan Kehadiran Santri Seluruh Lembaga Hari Ini (${todayStr})</h6>
+          <div class="row text-center g-2 mb-4">
+            <div class="col-3"><div class="p-3 border rounded bg-success bg-opacity-10 text-success"><small class="fw-bold d-block">MASUK</small><span class="fs-3 fw-bold">${statsToday.masuk}</span></div></div>
+            <div class="col-3"><div class="p-3 border rounded bg-info bg-opacity-10 text-info"><small class="fw-bold d-block">IZIN</small><span class="fs-3 fw-bold">${statsToday.izin}</span></div></div>
+            <div class="col-3"><div class="p-3 border rounded bg-warning bg-opacity-10 text-warning"><small class="fw-bold d-block">SAKIT</small><span class="fs-3 fw-bold">${statsToday.sakit}</span></div></div>
+            <div class="col-3"><div class="p-3 border rounded bg-danger bg-opacity-10 text-danger"><small class="fw-bold d-block">ALPA</small><span class="fs-3 fw-bold">${statsToday.alpa}</span></div></div>
+          </div>
+        </div>
+      `;
     }
+
+    // Auto load session saat refresh halaman
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = localStorage.getItem('tpq_user');
+      if (savedUser) {
+        try {
+          window.currentUser = JSON.parse(savedUser);
+          if (window.currentUser.role === 'walisiswa' && window.currentUser.list_siswa && window.currentUser.list_siswa.length > 0) {
+            window.selectedChildId = window.currentUser.list_siswa[0].id_siswa;
+          }
+          initApp();
+        } catch (e) {
+          localStorage.removeItem('tpq_user');
+        }
+      }
+    });
   </script>
 
+  <!-- Bootstrap Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
