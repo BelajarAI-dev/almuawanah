@@ -139,7 +139,7 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header bg-success text-white">
-          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-chat-dots me-2"></i>Berikan Tanggapan / Jawaban</h5>
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-chat-dots me-2"></i>Berikan / Edit Tanggapan Guru</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -162,7 +162,7 @@
           <div class="mb-3">
             <label class="form-label fw-bold">Aksi Penanganan:</label>
             <select id="modalAksiPenanganan" class="form-select">
-              <option value="jawab">Jawab Sendiri</option>
+              <option value="jawab">Jawab / Update Jawaban</option>
               <option value="teruskan">Teruskan ke Admin / Kepala Sekolah</option>
             </select>
           </div>
@@ -170,6 +170,50 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
           <button type="button" class="btn btn-success btn-sm" onclick="submitJawabPesan()"><i class="bi bi-send me-1"></i>Proses Tanggapan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT NILAI SANTRI -->
+  <div class="modal fade" id="editNilaiModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-pencil-square me-2"></i>Edit Data Nilai Santri</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editNilaiDocId">
+          <div class="mb-3"><label class="form-label fw-bold">Tanggal</label><input type="date" id="editNilaiTgl" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Materi Hafalan / Jilid</label><input type="text" id="editNilaiMateri" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Nilai</label><input type="text" id="editNilaiSkor" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Catatan Evaluasi</label><textarea id="editNilaiCatatan" class="form-control" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="submitUpdateNilai()"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT CATATAN GURU -->
+  <div class="modal fade" id="editCatatanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-pencil-square me-2"></i>Edit Catatan Perkembangan Santri</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editCatatanDocId">
+          <div class="mb-3"><label class="form-label fw-bold">Tanggal</label><input type="date" id="editCatatanTgl" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Isi Catatan Perkembangan</label><textarea id="editCatatanIsi" class="form-control" rows="3" required></textarea></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="submitUpdateCatatan()"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
         </div>
       </div>
     </div>
@@ -239,8 +283,8 @@
     window.selectedChildId = null;
     window.activeTab = 'dashboard';
     window.rawGuruMonitoringData = null;
-    window.currentAbsensiPayloadCache = [];
-    window.existingAbsensiMapCache = {};
+    window.rawNilaiListCache = [];
+    window.rawCatatanListCache = [];
 
     // -------------------------------------------------------------
     // AUTHENTICATION & LOGIN
@@ -755,6 +799,8 @@
     };
 
     // === 3. MENU GURU LENGKAP ===
+
+    // --- ABSENSI ---
     async function renderGuruAbsensi() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Santri & Absensi...`;
@@ -763,19 +809,16 @@
       const qS = query(collection(db, "siswa"), where("id_kelas", "==", idKelas));
       const snapS = await getDocs(qS);
 
-      const tglPilihan = new Date().toISOString().split('T')[0];
+      const tglPilihan = document.getElementById('tglAbsensiGuru')?.value || new Date().toISOString().split('T')[0];
 
-      // Ambil absensi eksisting pada tanggal tglPilihan
       const qA = query(collection(db, "absensi"), where("tanggal", "==", tglPilihan));
       const snapA = await getDocs(qA);
 
-      let existingAbsenMap = {}; // key: id_siswa -> { docId, status, keterangan }
+      let existingAbsenMap = {};
       snapA.forEach(d => {
         const item = d.data();
         existingAbsenMap[item.id_siswa] = { docId: d.id, status: item.status, keterangan: item.keterangan || '' };
       });
-
-      window.existingAbsensiMapCache = existingAbsenMap;
 
       let rows = '';
       let no = 1;
@@ -841,13 +884,11 @@
         const newStatus = r.querySelector('.status-absen')?.value;
         const ket = r.querySelector('.ket-absen')?.value || '';
 
-        // Hanya proses jika status baru bukan '-'/kosong
         if (idSiswa && newStatus && newStatus !== '-') {
           const isConflict = oldStatus && oldStatus !== '-' && oldStatus !== newStatus;
           if (isConflict && (!forceUpdateList || !forceUpdateList.includes(idSiswa))) {
             conflicts.push({ id_siswa: idSiswa, nama_siswa: namaSiswa, status_lama: oldStatus, status_baru: newStatus, docId: docId, ket: ket });
           } else {
-            // Jika status sama dengan database, maka abaikan. Jika beda / baru, tambahkan ke payload
             if (oldStatus !== newStatus) {
               payload.push({ id_siswa: idSiswa, nama_siswa: namaSiswa, status: newStatus, keterangan: ket, docId: docId });
             }
@@ -856,7 +897,6 @@
       });
 
       if (conflicts.length > 0) {
-        window.currentAbsensiPayloadCache = payload;
         let conflictRows = conflicts.map(c => `
           <tr>
             <td>${c.nama_siswa}</td>
@@ -897,13 +937,11 @@
       try {
         for (let item of payload) {
           if (item.docId) {
-            // Update data eksisting di Firestore
             await updateDoc(doc(db, "absensi", item.docId), {
               status: item.status,
               keterangan: item.keterangan
             });
           } else {
-            // Tambah data absensi baru di Firestore
             await addDoc(collection(db, "absensi"), {
               id_siswa: item.id_siswa,
               tanggal: tgl,
@@ -921,6 +959,7 @@
       }
     }
 
+    // --- MONITORING KEHADIRAN KELAS ---
     async function renderGuruMonitoring() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Kehadiran Kelas...`;
@@ -1303,27 +1342,33 @@
       window.print();
     };
 
+    // --- KELOLA NILAI SANTRI ---
     async function renderGuruNilai() {
       const idKelas = window.currentUser.id_kelas || '';
       const qS = query(collection(db, "siswa"), where("id_kelas", "==", idKelas));
       const snapS = await getDocs(qS);
-      let options = '';
+      let options = '<option value="ALL">-- Semua Santri Kelas --</option>';
+      let inputOptions = '';
       let siswaMap = {};
       snapS.forEach(d => {
         const sData = d.data();
         siswaMap[d.id] = sData.nama_siswa;
         options += `<option value="${d.id}">${sData.nama_siswa} (${sData.nis})</option>`;
+        inputOptions += `<option value="${d.id}">${sData.nama_siswa} (${sData.nis})</option>`;
       });
 
       const snapN = await getDocs(collection(db, "nilai"));
-      let rowsNilai = '';
-      let no = 1;
+      let nilaiList = [];
       snapN.forEach(d => {
         const item = d.data();
         if (siswaMap[item.id_siswa]) {
-          rowsNilai += `<tr><td class="text-center">${no++}</td><td><strong>${siswaMap[item.id_siswa]}</strong></td><td>${item.tanggal}</td><td>${item.materi}</td><td><span class="badge bg-success">${item.nilai}</span></td><td>${item.catatan || '-'}</td></tr>`;
+          nilaiList.push({ docId: d.id, ...item, nama_siswa: siswaMap[item.id_siswa] });
         }
       });
+
+      // Urutkan data berdasarkan tanggal/waktu terbaru (paling atas)
+      nilaiList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+      window.rawNilaiListCache = nilaiList;
 
       document.getElementById('mainContent').innerHTML = `
         <div class="card card-dashboard p-4">
@@ -1337,7 +1382,7 @@
           <div class="tab-content pt-3">
             <div class="tab-pane fade show active" id="tabInputNilai">
               <form onsubmit="submitNilaiSiswa(event)">
-                <div class="mb-3"><label class="form-label fw-bold">Pilih Santri</label><select id="nilaiSiswa" class="form-select border-success">${options || '<option value="">Tidak ada santri</option>'}</select></div>
+                <div class="mb-3"><label class="form-label fw-bold">Pilih Santri</label><select id="nilaiSiswa" class="form-select border-success">${inputOptions || '<option value="">Tidak ada santri</option>'}</select></div>
                 <div class="mb-3"><label class="form-label fw-bold">Tanggal Evaluasi</label><input type="date" id="nilaiTgl" class="form-control" value="${new Date().toISOString().split('T')[0]}" required></div>
                 <div class="mb-3"><label class="form-label fw-bold">Materi Hafalan / Jilid</label><input type="text" id="nilaiMateri" class="form-control" required placeholder="Contoh: Surah An-Naba 1-10"></div>
                 <div class="mb-3"><label class="form-label fw-bold">Nilai</label><input type="text" id="nilaiSkor" class="form-control" required placeholder="Contoh: A / 90 / Lancar"></div>
@@ -1347,17 +1392,69 @@
             </div>
 
             <div class="tab-pane fade" id="tabRekapNilai">
-              <table class="table table-sm table-bordered align-middle">
-                <thead class="table-success">
-                  <tr><th width="50" class="text-center">No</th><th>Nama Santri</th><th width="120">Tanggal</th><th>Materi</th><th width="100">Nilai</th><th>Catatan</th></tr>
-                </thead>
-                <tbody>${rowsNilai || '<tr><td colspan="6" class="text-center">Belum ada data nilai.</td></tr>'}</tbody>
-              </table>
+              <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+                <div class="col-md-5">
+                  <label class="form-label fw-bold mb-1">Filter Santri:</label>
+                  <select id="filterSiswaNilai" class="form-select border-success" onchange="filterNilaiTable()">${options}</select>
+                </div>
+                <div class="col-md-7">
+                  <label class="form-label fw-bold mb-1">Pencarian Langsung (Materi / Catatan / Nilai):</label>
+                  <input type="text" id="searchNilaiInput" class="form-control border-success" placeholder="Ketik kata kunci untuk mencari..." onkeyup="filterNilaiTable()">
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                  <thead class="table-success">
+                    <tr><th width="40" class="text-center">No</th><th>Nama Santri</th><th width="110" class="text-center">Tanggal</th><th>Materi</th><th width="90" class="text-center">Nilai</th><th>Catatan</th><th width="80" class="text-center">Aksi</th></tr>
+                  </thead>
+                  <tbody id="tblRekapNilaiBody"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       `;
+
+      filterNilaiTable();
     }
+
+    window.filterNilaiTable = function() {
+      const selectedSiswa = document.getElementById('filterSiswaNilai')?.value;
+      const searchQuery = document.getElementById('searchNilaiInput')?.value.toLowerCase().trim();
+
+      let filtered = window.rawNilaiListCache.filter(item => {
+        const matchSiswa = (selectedSiswa === 'ALL' || !selectedSiswa || item.id_siswa === selectedSiswa);
+        const matchText = !searchQuery || 
+          item.nama_siswa.toLowerCase().includes(searchQuery) ||
+          item.materi.toLowerCase().includes(searchQuery) ||
+          item.nilai.toLowerCase().includes(searchQuery) ||
+          (item.catatan && item.catatan.toLowerCase().includes(searchQuery));
+        return matchSiswa && matchText;
+      });
+
+      let rows = '';
+      let no = 1;
+      filtered.forEach(item => {
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><strong>${item.nama_siswa}</strong></td>
+            <td class="text-center">${item.tanggal}</td>
+            <td>${item.materi}</td>
+            <td class="text-center"><span class="badge bg-success">${item.nilai}</span></td>
+            <td>${item.catatan || '-'}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-success p-1 py-0" onclick="openModalEditNilai('${item.docId}', '${item.tanggal}', '${encodeURIComponent(item.materi)}', '${encodeURIComponent(item.nilai)}', '${encodeURIComponent(item.catatan || '')}')">
+                <i class="bi bi-pencil-square"></i> Edit
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tblRekapNilaiBody').innerHTML = rows || '<tr><td colspan="7" class="text-center text-muted">Data nilai tidak ditemukan.</td></tr>';
+    };
 
     window.submitNilaiSiswa = async function(e) {
       e.preventDefault();
@@ -1377,49 +1474,128 @@
       }
     };
 
+    window.openModalEditNilai = function(docId, tgl, materi, skor, catatan) {
+      document.getElementById('editNilaiDocId').value = docId;
+      document.getElementById('editNilaiTgl').value = tgl;
+      document.getElementById('editNilaiMateri').value = decodeURIComponent(materi);
+      document.getElementById('editNilaiSkor').value = decodeURIComponent(skor);
+      document.getElementById('editNilaiCatatan').value = decodeURIComponent(catatan);
+      new bootstrap.Modal(document.getElementById('editNilaiModal')).show();
+    };
+
+    window.submitUpdateNilai = async function() {
+      const docId = document.getElementById('editNilaiDocId').value;
+      try {
+        await updateDoc(doc(db, "nilai", docId), {
+          tanggal: document.getElementById('editNilaiTgl').value,
+          materi: document.getElementById('editNilaiMateri').value,
+          nilai: document.getElementById('editNilaiSkor').value,
+          catatan: document.getElementById('editNilaiCatatan').value
+        });
+        alert('Data nilai berhasil diperbarui!');
+        bootstrap.Modal.getInstance(document.getElementById('editNilaiModal')).hide();
+        renderGuruNilai();
+      } catch (err) {
+        alert('Gagal mengupdate nilai: ' + err.message);
+      }
+    };
+
+    // --- CATATAN GURU ---
     async function renderGuruCatatan() {
       const idKelas = window.currentUser.id_kelas || '';
       const qS = query(collection(db, "siswa"), where("id_kelas", "==", idKelas));
       const snapS = await getDocs(qS);
-      let options = '';
+      let options = '<option value="ALL">-- Semua Santri Kelas --</option>';
+      let inputOptions = '';
       let siswaMap = {};
       snapS.forEach(d => {
         const sData = d.data();
         siswaMap[d.id] = sData.nama_siswa;
         options += `<option value="${d.id}">${sData.nama_siswa} (${sData.nis})</option>`;
+        inputOptions += `<option value="${d.id}">${sData.nama_siswa} (${sData.nis})</option>`;
       });
 
       const snapC = await getDocs(collection(db, "catatan_guru"));
-      let rowsCatatan = '';
-      let no = 1;
+      let catatanList = [];
       snapC.forEach(d => {
         const item = d.data();
         if (siswaMap[item.id_siswa]) {
-          rowsCatatan += `<tr><td class="text-center">${no++}</td><td><strong>${siswaMap[item.id_siswa]}</strong></td><td width="120">${item.tanggal}</td><td>${item.catatan}</td></tr>`;
+          catatanList.push({ docId: d.id, ...item, nama_siswa: siswaMap[item.id_siswa] });
         }
       });
+
+      catatanList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+      window.rawCatatanListCache = catatanList;
 
       document.getElementById('mainContent').innerHTML = `
         <div class="card card-dashboard p-4">
           <h5><i class="bi bi-chat-left-text text-success me-2"></i> Catatan Perkembangan Santri</h5>
           <hr>
           <form onsubmit="submitCatatanGuru(event)" class="mb-4 bg-light p-3 rounded border">
-            <div class="mb-3"><label class="form-label fw-bold">Pilih Santri</label><select id="catatanSiswa" class="form-select border-success">${options || '<option value="">Tidak ada santri</option>'}</select></div>
+            <div class="mb-3"><label class="form-label fw-bold">Pilih Santri</label><select id="catatanSiswa" class="form-select border-success">${inputOptions || '<option value="">Tidak ada santri</option>'}</select></div>
             <div class="mb-3"><label class="form-label fw-bold">Tanggal</label><input type="date" id="catatanTgl" class="form-control" value="${new Date().toISOString().split('T')[0]}" required></div>
-            <div class="mb-3"><label class="form-label fw-bold">Isi Catatan Perkembangan</label><textarea id="catatanIsi" class="form-control" rows="2" required placeholder="Tulis catatan..."></textarea></div>
+            <div class="mb-3"><label class="form-label fw-bold">Isi Catatan Perkembangan</label><textarea id="catatanIsi" class="form-control" rows="2" required placeholder="Tulis catatan perkembangan santri..."></textarea></div>
             <button type="submit" class="btn btn-success"><i class="bi bi-send me-1"></i> Simpan Catatan</button>
           </form>
 
-          <h6>Riwayat Catatan Guru</h6>
-          <table class="table table-bordered align-middle">
-            <thead class="table-success">
-              <tr><th width="50" class="text-center">No</th><th>Nama Santri</th><th>Tanggal</th><th>Catatan Guru</th></tr>
-            </thead>
-            <tbody>${rowsCatatan || '<tr><td colspan="4" class="text-center">Belum ada catatan.</td></tr>'}</tbody>
-          </table>
+          <h6 class="fw-bold text-success mb-3">Riwayat Catatan Guru</h6>
+          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+            <div class="col-md-5">
+              <label class="form-label fw-bold mb-1">Filter Santri:</label>
+              <select id="filterSiswaCatatan" class="form-select border-success" onchange="filterCatatanTable()">${options}</select>
+            </div>
+            <div class="col-md-7">
+              <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
+              <input type="text" id="searchCatatanInput" class="form-control border-success" placeholder="Ketik untuk mencari isi catatan..." onkeyup="filterCatatanTable()">
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th>Nama Santri</th><th width="110" class="text-center">Tanggal</th><th>Isi Catatan Guru</th><th width="80" class="text-center">Aksi</th></tr>
+              </thead>
+              <tbody id="tblCatatanBody"></tbody>
+            </table>
+          </div>
         </div>
       `;
+
+      filterCatatanTable();
     }
+
+    window.filterCatatanTable = function() {
+      const selectedSiswa = document.getElementById('filterSiswaCatatan')?.value;
+      const searchQuery = document.getElementById('searchCatatanInput')?.value.toLowerCase().trim();
+
+      let filtered = window.rawCatatanListCache.filter(item => {
+        const matchSiswa = (selectedSiswa === 'ALL' || !selectedSiswa || item.id_siswa === selectedSiswa);
+        const matchText = !searchQuery || 
+          item.nama_siswa.toLowerCase().includes(searchQuery) ||
+          item.catatan.toLowerCase().includes(searchQuery);
+        return matchSiswa && matchText;
+      });
+
+      let rows = '';
+      let no = 1;
+      filtered.forEach(item => {
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><strong>${item.nama_siswa}</strong></td>
+            <td class="text-center">${item.tanggal}</td>
+            <td>${item.catatan}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-success p-1 py-0" onclick="openModalEditCatatan('${item.docId}', '${item.tanggal}', '${encodeURIComponent(item.catatan)}')">
+                <i class="bi bi-pencil-square"></i> Edit
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tblCatatanBody').innerHTML = rows || '<tr><td colspan="5" class="text-center text-muted">Catatan tidak ditemukan.</td></tr>';
+    };
 
     window.submitCatatanGuru = async function(e) {
       e.preventDefault();
@@ -1437,6 +1613,29 @@
       }
     };
 
+    window.openModalEditCatatan = function(docId, tgl, catatan) {
+      document.getElementById('editCatatanDocId').value = docId;
+      document.getElementById('editCatatanTgl').value = tgl;
+      document.getElementById('editCatatanIsi').value = decodeURIComponent(catatan);
+      new bootstrap.Modal(document.getElementById('editCatatanModal')).show();
+    };
+
+    window.submitUpdateCatatan = async function() {
+      const docId = document.getElementById('editCatatanDocId').value;
+      try {
+        await updateDoc(doc(db, "catatan_guru", docId), {
+          tanggal: document.getElementById('editCatatanTgl').value,
+          catatan: document.getElementById('editCatatanIsi').value
+        });
+        alert('Catatan perkembangan berhasil diperbarui!');
+        bootstrap.Modal.getInstance(document.getElementById('editCatatanModal')).hide();
+        renderGuruCatatan();
+      } catch (err) {
+        alert('Gagal mengupdate catatan: ' + err.message);
+      }
+    };
+
+    // --- RESPON & PERTANYAAN WALI ---
     async function renderGuruResponWali() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Masukan...`;
@@ -1463,8 +1662,8 @@
             <td>${item.jawaban || '<em>Belum dijawab</em>'}</td>
             <td class="text-center">${statusBadge}</td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-success" onclick="openModalJawab('${d.id}', '${encodeURIComponent(item.pesan)}')">
-                <i class="bi bi-reply-fill"></i> Jawab
+              <button class="btn btn-sm btn-outline-success" onclick="openModalJawab('${d.id}', '${encodeURIComponent(item.pesan)}', '${encodeURIComponent(item.jawaban || '')}', '${item.status}')">
+                <i class="bi bi-reply-fill"></i> ${item.jawaban ? 'Edit Jawaban' : 'Jawab'}
               </button>
             </td>
           </tr>
@@ -1474,10 +1673,10 @@
       main.innerHTML = `
         <div class="card card-dashboard p-4">
           <h5><i class="bi bi-chat-square-quote text-success me-2"></i> Respon & Pertanyaan Wali Santri</h5>
-          <p class="text-muted small">Guru dapat langsung merespon pertanyaan wali, memilih status publikasi (Public/Private), atau meneruskan pertanyaan ke Admin/Kepala Sekolah.</p>
+          <p class="text-muted small">Guru dapat merespon atau mengedit jawaban, memilih status publikasi (Public/Private), atau meneruskan pertanyaan ke Admin/Kepala Sekolah.</p>
           <table class="table table-bordered align-middle mt-3">
             <thead class="table-success">
-              <tr><th width="40" class="text-center">No</th><th width="100">Tanggal</th><th>Subjek</th><th>Pesan Wali</th><th>Tanggapan Guru</th><th width="120" class="text-center">Status</th><th width="80" class="text-center">Aksi</th></tr>
+              <tr><th width="40" class="text-center">No</th><th width="100">Tanggal</th><th>Subjek</th><th>Pesan Wali</th><th>Tanggapan Guru</th><th width="120" class="text-center">Status</th><th width="110" class="text-center">Aksi</th></tr>
             </thead>
             <tbody>${rows || '<tr><td colspan="7" class="text-center">Belum ada masukan wali.</td></tr>'}</tbody>
           </table>
@@ -1485,10 +1684,17 @@
       `;
     }
 
-    window.openModalJawab = function(id, msg) {
+    window.openModalJawab = function(id, msg, currentJwb, currentStatus) {
       document.getElementById('modalIdMasukan').value = id;
       document.getElementById('modalPesanPreview').innerText = decodeURIComponent(msg);
-      document.getElementById('modalJawabanInput').value = '';
+      document.getElementById('modalJawabanInput').value = decodeURIComponent(currentJwb);
+      
+      if (currentStatus === 'Private') {
+        document.getElementById('modalStatusPublikasi').value = 'Private';
+      } else {
+        document.getElementById('modalStatusPublikasi').value = 'Public';
+      }
+      
       new bootstrap.Modal(document.getElementById('jawabPesanModal')).show();
     };
 
