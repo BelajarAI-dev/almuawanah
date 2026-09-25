@@ -96,8 +96,8 @@
       <a class="navbar-brand" href="javascript:void(0)"><i class="bi bi-journal-check"></i> TPQ AL-MUAWANAH</a>
       
       <div class="ms-auto d-flex align-items-center">
-        <span class="me-3 badge bg-light text-dark p-2 border" id="userBadge">Role: -</span>
-        <button class="btn btn-outline-danger btn-sm" onclick="logout('Pengguna keluar.')"><i class="bi bi-box-arrow-right"></i> Keluar</button>
+        <span class="ms-3 badge bg-light text-dark p-2 border" id="userBadge">Role: -</span>
+        <button class="btn btn-outline-danger btn-sm ms-2" onclick="logout('Pengguna keluar.')"><i class="bi bi-box-arrow-right"></i> Keluar</button>
       </div>
     </nav>
 
@@ -286,7 +286,13 @@
           <div class="mb-3"><label class="form-label fw-bold">NIS</label><input type="text" id="editSantriNis" class="form-control" required></div>
           <div class="mb-3"><label class="form-label fw-bold">Nama Santri</label><input type="text" id="editSantriNama" class="form-control" required></div>
           <div class="mb-3"><label class="form-label fw-bold">Kelas</label><select id="editSantriKelas" class="form-select"></select></div>
-          <div class="mb-3"><label class="form-label fw-bold">ID Wali (Opsional)</label><input type="text" id="editSantriWali" class="form-control"></div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">ID Wali Santri</label>
+            <div class="input-group">
+              <input type="text" id="editSantriWali" class="form-control bg-light" readonly placeholder="Pilih wali santri...">
+              <button class="btn btn-outline-success" type="button" onclick="openWaliSearchModal('edit')"><i class="bi bi-search me-1"></i>Cari Wali</button>
+            </div>
+          </div>
           <div class="mb-3">
             <label class="form-label fw-bold">Status Santri</label>
             <select id="editSantriStatus" class="form-select">
@@ -299,6 +305,42 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
           <button type="button" class="btn btn-success btn-sm" onclick="submitUpdateSantri()"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PENCARIAN INTERAKTIF WALI SANTRI -->
+  <div class="modal fade" id="waliSearchModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-person-lines-fill me-2"></i>Pilih Data Wali Santri dari Database</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="targetFormWaliMode" value="new">
+          <div class="mb-3">
+            <input type="text" id="searchWaliModalInput" class="form-control border-success" placeholder="Ketik nama wali atau username untuk mencari..." onkeyup="filterWaliSearchTable()">
+          </div>
+          <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+            <table class="table table-sm table-bordered table-hover align-middle">
+              <thead class="table-success sticky-top">
+                <tr>
+                  <th width="40" class="text-center">No</th>
+                  <th>Nama Lengkap Wali</th>
+                  <th width="140">Username</th>
+                  <th width="120" class="text-center">Aksi Pilihan</th>
+                </tr>
+              </thead>
+              <tbody id="tblWaliSearchModalBody">
+                <tr><td colspan="4" class="text-center text-muted">Memuat data wali...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
         </div>
       </div>
     </div>
@@ -376,6 +418,7 @@
     window.rawSantriListCache = [];
     window.rawModerasiListCache = [];
     window.rawLogsListCache = [];
+    window.rawWaliUsersCache = [];
 
     // Helper: Ambil Data Kelas dari Database untuk Dropdown
     async function getKelasDropdownOptions(selectedVal = '', includeEmpty = false) {
@@ -393,6 +436,23 @@
         return options;
       } catch (err) {
         return includeEmpty ? '<option value="">-- Tidak Terikat Kelas --</option><option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>' : '<option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>';
+      }
+    }
+
+    // Helper: Ambil Daftar Wali Santri dari Tabel Users (Role 'walisiswa') untuk Dropdown
+    async function getWaliDropdownOptions(selectedVal = '') {
+      try {
+        const q = query(collection(db, "users"), where("role", "==", "walisiswa"));
+        const snap = await getDocs(q);
+        let options = '<option value="">-- Pilih Wali Santri --</option>';
+        snap.forEach(d => {
+          const w = d.data();
+          const isSelected = (d.id === selectedVal) ? 'selected' : '';
+          options += `<option value="${d.id}" ${isSelected}>${w.nama} (Username: ${w.username})</option>`;
+        });
+        return options;
+      } catch (err) {
+        return '<option value="">-- Gagal Memuat Wali --</option>';
       }
     }
 
@@ -652,7 +712,6 @@
         }
       });
 
-      // Ambil Broadcast
       const snapB = await getDocs(collection(db, "broadcast"));
       let broadcastHtml = '';
       snapB.forEach(d => {
@@ -711,7 +770,6 @@
       const activeChild = getActiveChild();
       const main = document.getElementById('mainContent');
 
-      // Ambil Broadcast
       const snapB = await getDocs(collection(db, "broadcast"));
       let broadcastHtml = '';
       snapB.forEach(d => {
@@ -1960,23 +2018,28 @@
       }
     };
 
-    // === 4. MENU ADMIN (Lengkap dengan 5 Fitur Tambahan Wewenang Admin) ===
+    // === 4. MENU ADMIN ===
     
-    // --- 4.1 Kelola Infaq Santri (Admin) ---
+    // --- 4.1 Kelola Infaq Santri (Admin) [Dengan Filter Kelas] ---
     async function renderAdminInfaq() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Infaq...`;
 
       const snapS = await getDocs(collection(db, "siswa"));
       let siswaMap = {};
+      let siswaKelasMap = {};
       let optionsInput = '';
       let optionsFilter = '<option value="ALL">-- Semua Santri --</option>';
+      
       snapS.forEach(d => {
         const sData = d.data();
         siswaMap[d.id] = sData.nama_siswa;
-        optionsInput += `<option value="${d.id}">${sData.nama_siswa} (${sData.nis}) - Kelas: ${sData.id_kelas}</option>`;
-        optionsFilter += `<option value="${d.id}">${sData.nama_siswa} (${sData.nis})</option>`;
+        siswaKelasMap[d.id] = sData.id_kelas || '-';
+        optionsInput += `<option value="${d.id}" data-kelas="${sData.id_kelas}">${sData.nama_siswa} (${sData.nis}) - Kelas: ${sData.id_kelas}</option>`;
+        optionsFilter += `<option value="${d.id}" data-kelas="${sData.id_kelas}">${sData.nama_siswa} (${sData.nis})</option>`;
       });
+
+      const kelasFilterOptions = await getKelasDropdownOptions('', true);
 
       const snapI = await getDocs(collection(db, "infaq"));
       let infaqList = [];
@@ -1984,7 +2047,12 @@
       snapI.forEach(d => {
         const item = d.data();
         totalInfaq += Number(item.jumlah) || 0;
-        infaqList.push({ docId: d.id, ...item, nama_siswa: siswaMap[item.id_siswa] || 'Santri (Tidak ditemukan)' });
+        infaqList.push({ 
+          docId: d.id, 
+          ...item, 
+          nama_siswa: siswaMap[item.id_siswa] || 'Santri (Tidak ditemukan)',
+          id_kelas: siswaKelasMap[item.id_siswa] || '-'
+        });
       });
 
       infaqList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
@@ -2017,20 +2085,27 @@
               </div>
 
               <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
-                <div class="col-md-5">
+                <div class="col-md-3">
+                  <label class="form-label fw-bold mb-1">Filter Kelas:</label>
+                  <select id="filterKelasAdminInfaq" class="form-select border-success" onchange="filterAdminInfaqTable()">
+                    <option value="ALL">-- Semua Kelas --</option>
+                    ${kelasFilterOptions.replace('<option value="">-- Tidak Terikat Kelas --</option>', '')}
+                  </select>
+                </div>
+                <div class="col-md-4">
                   <label class="form-label fw-bold mb-1">Filter Santri:</label>
                   <select id="filterSiswaAdminInfaq" class="form-select border-success" onchange="filterAdminInfaqTable()">${optionsFilter}</select>
                 </div>
-                <div class="col-md-7">
-                  <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
-                  <input type="text" id="searchAdminInfaqInput" class="form-control border-success" placeholder="Cari keterangan / nominal..." onkeyup="filterAdminInfaqTable()">
+                <div class="col-md-5">
+                  <label class="form-label fw-bold mb-1">Pencarian Keterangan / Nominal:</label>
+                  <input type="text" id="searchAdminInfaqInput" class="form-control border-success" placeholder="Cari..." onkeyup="filterAdminInfaqTable()">
                 </div>
               </div>
 
               <div class="table-responsive">
                 <table class="table table-sm table-bordered align-middle">
                   <thead class="table-success">
-                    <tr><th width="40" class="text-center">No</th><th>Nama Santri</th><th width="110" class="text-center">Tanggal</th><th class="text-end" width="130">Jumlah</th><th>Keterangan</th><th width="80" class="text-center">Aksi</th></tr>
+                    <tr><th width="40" class="text-center">No</th><th>Nama Santri</th><th width="90" class="text-center">Kelas</th><th width="110" class="text-center">Tanggal</th><th class="text-end" width="130">Jumlah</th><th>Keterangan</th><th width="80" class="text-center">Aksi</th></tr>
                   </thead>
                   <tbody id="tblAdminInfaqBody"></tbody>
                 </table>
@@ -2044,16 +2119,18 @@
     }
 
     window.filterAdminInfaqTable = function() {
+      const selectedKelas = document.getElementById('filterKelasAdminInfaq')?.value;
       const selectedSiswa = document.getElementById('filterSiswaAdminInfaq')?.value;
       const searchQuery = document.getElementById('searchAdminInfaqInput')?.value.toLowerCase().trim();
 
       let filtered = window.rawInfaqListCache.filter(item => {
+        const matchKelas = (selectedKelas === 'ALL' || !selectedKelas || item.id_kelas === selectedKelas);
         const matchSiswa = (selectedSiswa === 'ALL' || !selectedSiswa || item.id_siswa === selectedSiswa);
         const matchText = !searchQuery || 
           item.nama_siswa.toLowerCase().includes(searchQuery) ||
           item.jumlah.toString().includes(searchQuery) ||
           (item.keterangan && item.keterangan.toLowerCase().includes(searchQuery));
-        return matchSiswa && matchText;
+        return matchKelas && matchSiswa && matchText;
       });
 
       let rows = '';
@@ -2063,6 +2140,7 @@
           <tr>
             <td class="text-center">${no++}</td>
             <td><strong>${item.nama_siswa}</strong></td>
+            <td class="text-center"><span class="badge bg-info text-dark">${item.id_kelas}</span></td>
             <td class="text-center">${item.tanggal}</td>
             <td class="text-end">Rp ${(Number(item.jumlah)||0).toLocaleString('id-ID')}</td>
             <td>${item.keterangan || '-'}</td>
@@ -2075,7 +2153,7 @@
         `;
       });
 
-      document.getElementById('tblAdminInfaqBody').innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">Data infaq tidak ditemukan.</td></tr>';
+      document.getElementById('tblAdminInfaqBody').innerHTML = rows || '<tr><td colspan="7" class="text-center text-muted">Data infaq tidak ditemukan.</td></tr>';
     };
 
     window.submitAdminInfaq = async function(e) {
@@ -2109,13 +2187,20 @@
       }
     };
 
-    // --- 4.2 Master Data Santri (`adminSantri`) ---
+    // --- 4.2 Master Data Santri (`adminSantri`) [Dengan Modal Pencarian Wali dari Tabel Users] ---
     async function renderAdminSantri() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Santri...`;
 
       const kelasOptionsHtml = await getKelasDropdownOptions('', false);
       const kelasFilterOptions = await getKelasDropdownOptions('', true);
+
+      // Cache wali users untuk pencarian modal
+      const qWali = query(collection(db, "users"), where("role", "==", "walisiswa"));
+      const snapWali = await getDocs(qWali);
+      let waliList = [];
+      snapWali.forEach(d => waliList.push({ id_user: d.id, ...d.data() }));
+      window.rawWaliUsersCache = waliList;
 
       const snap = await getDocs(collection(db, "siswa"));
       let santriList = [];
@@ -2126,6 +2211,9 @@
       santriList.sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
       window.rawSantriListCache = santriList;
 
+      let waliMap = {};
+      waliList.forEach(w => { waliMap[w.id_user] = w.nama; });
+
       main.innerHTML = `
         <div class="card card-dashboard p-4">
           <h5><i class="bi bi-mortarboard text-success me-2"></i> Master Data Santri</h5>
@@ -2135,7 +2223,12 @@
             <div class="col-md-2"><input type="text" id="newSantriNis" class="form-control" required placeholder="NIS"></div>
             <div class="col-md-3"><input type="text" id="newSantriNama" class="form-control" required placeholder="Nama Lengkap Santri"></div>
             <div class="col-md-2"><select id="newSantriKelas" class="form-select">${kelasOptionsHtml}</select></div>
-            <div class="col-md-2"><input type="text" id="newSantriWali" class="form-control" placeholder="ID Wali (Opsional)"></div>
+            <div class="col-md-2">
+              <div class="input-group">
+                <input type="text" id="newSantriWali" class="form-control bg-light" readonly required placeholder="Pilih Wali...">
+                <button class="btn btn-outline-success" type="button" onclick="openWaliSearchModal('new')"><i class="bi bi-search"></i></button>
+              </div>
+            </div>
             <div class="col-md-2">
               <select id="newSantriStatus" class="form-select">
                 <option value="Aktif">Aktif</option>
@@ -2164,7 +2257,7 @@
           <div class="table-responsive">
             <table class="table table-sm table-bordered align-middle">
               <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th width="100">NIS</th><th>Nama Santri</th><th width="100">Kelas</th><th width="100">Status</th><th width="120" class="text-center">Aksi</th></tr>
+                <tr><th width="40" class="text-center">No</th><th width="90">NIS</th><th>Nama Santri</th><th width="90">Kelas</th><th>Wali Santri</th><th width="90">Status</th><th width="110" class="text-center">Aksi</th></tr>
               </thead>
               <tbody id="tblSantriBody"></tbody>
             </table>
@@ -2179,6 +2272,9 @@
       const selectedKelas = document.getElementById('filterKelasSantri')?.value;
       const searchQuery = document.getElementById('searchSantriInput')?.value.toLowerCase().trim();
 
+      let waliMap = {};
+      window.rawWaliUsersCache.forEach(w => { waliMap[w.id_user] = w.nama; });
+
       let filtered = window.rawSantriListCache.filter(s => {
         const matchKelas = (selectedKelas === 'ALL' || !selectedKelas || s.id_kelas === selectedKelas);
         const matchText = !searchQuery || 
@@ -2190,15 +2286,17 @@
       let rows = '';
       let no = 1;
       filtered.forEach(s => {
+        const waliName = waliMap[s.id_wali] || `<span class="text-danger">Wali belum diatur (${s.id_wali || '-'})</span>`;
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
             <td><strong>${s.nis}</strong></td>
             <td>${s.nama_siswa}</td>
             <td><span class="badge bg-info text-dark">${s.id_kelas}</span></td>
+            <td>${waliName}</td>
             <td><span class="badge bg-success">${s.status_siswa || 'Aktif'}</span></td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditSantri('${s.docId}', '${encodeURIComponent(s.nis)}', '${encodeURIComponent(s.nama_siswa)}', '${s.id_kelas}', '${encodeURIComponent(s.id_wali || '')}', '${s.status_siswa || 'Aktif'}')">
+              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditSantri('${s.docId}', '${encodeURIComponent(s.nis)}', '${encodeURIComponent(s.nama_siswa)}', '${s.id_kelas}', '${s.id_wali || ''}', '${s.status_siswa || 'Aktif'}')">
                 <i class="bi bi-pencil-square"></i>
               </button>
               <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteSantri('${s.docId}')">
@@ -2209,17 +2307,82 @@
         `;
       });
 
-      document.getElementById('tblSantriBody').innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">Data santri tidak ditemukan.</td></tr>';
+      document.getElementById('tblSantriBody').innerHTML = rows || '<tr><td colspan="7" class="text-center text-muted">Data santri tidak ditemukan.</td></tr>';
+    };
+
+    // Fungsi Modal Pencarian Wali Interaktif
+    window.openWaliSearchModal = async function(mode) {
+      document.getElementById('targetFormWaliMode').value = mode;
+      
+      // Pastikan cache wali terisi
+      if (!window.rawWaliUsersCache || window.rawWaliUsersCache.length === 0) {
+        const qWali = query(collection(db, "users"), where("role", "==", "walisiswa"));
+        const snapWali = await getDocs(qWali);
+        let waliList = [];
+        snapWali.forEach(d => waliList.push({ id_user: d.id, ...d.data() }));
+        window.rawWaliUsersCache = waliList;
+      }
+
+      renderWaliSearchModalTable(window.rawWaliUsersCache);
+      new bootstrap.Modal(document.getElementById('waliSearchModal')).show();
+    };
+
+    function renderWaliSearchModalTable(dataList) {
+      let rows = '';
+      let no = 1;
+      dataList.forEach(w => {
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><strong>${w.nama}</strong><br><small class="text-muted">ID: ${w.id_user}</small></td>
+            <td>${w.username}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-success px-3" onclick="selectWaliFromModal('${w.id_user}', '${encodeURIComponent(w.nama)}')">
+                <i class="bi bi-check2 me-1"></i>Pilih
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+      document.getElementById('tblWaliSearchModalBody').innerHTML = rows || '<tr><td colspan="4" class="text-center text-muted">Data wali santri tidak ditemukan di database users.</td></tr>';
+    }
+
+    window.filterWaliSearchTable = function() {
+      const q = document.getElementById('searchWaliModalInput').value.toLowerCase().trim();
+      const filtered = window.rawWaliUsersCache.filter(w => 
+        w.nama.toLowerCase().includes(q) || w.username.toLowerCase().includes(q)
+      );
+      renderWaliSearchModalTable(filtered);
+    };
+
+    window.selectWaliFromModal = function(idWali, encodedNama) {
+      const namaWali = decodeURIComponent(encodedNama);
+      const mode = document.getElementById('targetFormWaliMode').value;
+      
+      if (mode === 'new') {
+        const inputId = document.getElementById('newSantriWali');
+        inputId.value = idWali;
+        inputId.title = `Terpilih: ${namaWali} (${idWali})`;
+      } else if (mode === 'edit') {
+        const inputId = document.getElementById('editSantriWali');
+        inputId.value = idWali;
+        inputId.title = `Terpilih: ${namaWali} (${idWali})`;
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById('waliSearchModal')).hide();
     };
 
     window.addSantri = async function(e) {
       e.preventDefault();
+      const idWaliVal = document.getElementById('newSantriWali').value;
+      if (!idWaliVal) { alert('Silakan pilih ID Wali Santri terlebih dahulu!'); return; }
+
       try {
         await addDoc(collection(db, "siswa"), {
           nis: document.getElementById('newSantriNis').value,
           nama_siswa: document.getElementById('newSantriNama').value,
           id_kelas: document.getElementById('newSantriKelas').value,
-          id_wali: document.getElementById('newSantriWali').value || '',
+          id_wali: idWaliVal,
           status_siswa: document.getElementById('newSantriStatus').value
         });
         await logSystemActivity(`Admin menambah santri baru: ${document.getElementById('newSantriNama').value}`);
@@ -2234,7 +2397,7 @@
       document.getElementById('editSantriDocId').value = docId;
       document.getElementById('editSantriNis').value = decodeURIComponent(nis);
       document.getElementById('editSantriNama').value = decodeURIComponent(nama);
-      document.getElementById('editSantriWali').value = decodeURIComponent(wali);
+      document.getElementById('editSantriWali').value = wali;
       document.getElementById('editSantriStatus').value = status;
       
       document.getElementById('editSantriKelas').innerHTML = await getKelasDropdownOptions(kelas, false);
@@ -2243,12 +2406,15 @@
 
     window.submitUpdateSantri = async function() {
       const docId = document.getElementById('editSantriDocId').value;
+      const idWaliVal = document.getElementById('editSantriWali').value;
+      if (!idWaliVal) { alert('ID Wali Santri tidak boleh kosong!'); return; }
+
       try {
         await updateDoc(doc(db, "siswa", docId), {
           nis: document.getElementById('editSantriNis').value,
           nama_siswa: document.getElementById('editSantriNama').value,
           id_kelas: document.getElementById('editSantriKelas').value,
-          id_wali: document.getElementById('editSantriWali').value,
+          id_wali: idWaliVal,
           status_siswa: document.getElementById('editSantriStatus').value
         });
         await logSystemActivity(`Admin memperbarui data santri`);
@@ -2337,7 +2503,7 @@
       }
     };
 
-    // --- 4.4 Kelola User (Admin) [Kecuali Super Admin] ---
+    // --- 4.4 Kelola User (Admin) ---
     async function renderAdminUsers() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Users...`;
@@ -2727,7 +2893,7 @@
         try {
           await deleteDoc(doc(db, "broadcast", docId));
           await logSystemActivity(`Admin menghapus broadcast ID ${docId}`);
-          alert('Pengajaran berhasil dihapus.');
+          alert('Pengumuman berhasil dihapus.');
           renderAdminBroadcast();
         } catch (err) {
           alert('Gagal menghapus: ' + err.message);
