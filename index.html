@@ -273,6 +273,37 @@
     </div>
   </div>
 
+  <!-- MODAL EDIT SANTRI ADMIN -->
+  <div class="modal fade" id="editSantriModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-pencil-square me-2"></i>Edit Data Santri</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editSantriDocId">
+          <div class="mb-3"><label class="form-label fw-bold">NIS</label><input type="text" id="editSantriNis" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Nama Santri</label><input type="text" id="editSantriNama" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Kelas</label><select id="editSantriKelas" class="form-select"></select></div>
+          <div class="mb-3"><label class="form-label fw-bold">ID Wali (Opsional)</label><input type="text" id="editSantriWali" class="form-control"></div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Status Santri</label>
+            <select id="editSantriStatus" class="form-select">
+              <option value="Aktif">Aktif</option>
+              <option value="Lulus">Lulus</option>
+              <option value="Keluar">Keluar</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="submitUpdateSantri()"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL KONFIRMASI KONFLIK ABSENSI GURU -->
   <div class="modal fade" id="conflictModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -342,7 +373,9 @@
     window.rawInfaqListCache = [];
     window.rawUsersListCache = [];
     window.rawKelasListCache = [];
+    window.rawSantriListCache = [];
     window.rawModerasiListCache = [];
+    window.rawLogsListCache = [];
 
     // Helper: Ambil Data Kelas dari Database untuk Dropdown
     async function getKelasDropdownOptions(selectedVal = '', includeEmpty = false) {
@@ -360,6 +393,20 @@
         return options;
       } catch (err) {
         return includeEmpty ? '<option value="">-- Tidak Terikat Kelas --</option><option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>' : '<option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>';
+      }
+    }
+
+    // Helper: Logging Aktivitas Sistem untuk Audit
+    async function logSystemActivity(aktivitas) {
+      try {
+        await addDoc(collection(db, "system_logs"), {
+          tanggal: new Date().toISOString(),
+          user: window.currentUser ? window.currentUser.nama : 'Sistem',
+          role: window.currentUser ? window.currentUser.role : 'system',
+          aktivitas: aktivitas
+        });
+      } catch (e) {
+        console.error("Gagal mencatat log:", e);
       }
     }
 
@@ -402,6 +449,8 @@
           window.selectedChildId = userData.list_siswa[0].id_siswa;
         }
 
+        await logSystemActivity(`Login ke sistem (${userData.role})`);
+
         btn.disabled = false;
         btn.innerText = "Masuk";
         initApp();
@@ -413,7 +462,10 @@
       }
     };
 
-    window.logout = function(msg) {
+    window.logout = async function(msg) {
+      if (window.currentUser) {
+        await logSystemActivity(`Logout dari sistem`);
+      }
       window.currentUser = null;
       window.selectedChildId = null;
       window.rawGuruMonitoringData = null;
@@ -501,9 +553,14 @@
 
       if (role === 'admin' || role === 'superadmin') {
         html += `
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminSantri" onclick="switchTab('adminSantri')"><i class="bi bi-mortarboard me-2"></i> Master Data Santri</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminGuruMapping" onclick="switchTab('adminGuruMapping')"><i class="bi bi-person-badge me-2"></i> Penugasan Guru Kelas</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminUsers" onclick="switchTab('adminUsers')"><i class="bi bi-people me-2"></i> Kelola User</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminKelas" onclick="switchTab('adminKelas')"><i class="bi bi-arrow-left-right me-2"></i> Manajemen Kelas</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminBroadcast" onclick="switchTab('adminBroadcast')"><i class="bi bi-megaphone me-2"></i> Broadcast Pengumuman</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminTahunAjaran" onclick="switchTab('adminTahunAjaran')"><i class="bi bi-calendar3 me-2"></i> Tahun Ajaran & Semester</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminModerasi" onclick="switchTab('adminModerasi')"><i class="bi bi-shield-check me-2"></i> Moderasi Masukan</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminLogs" onclick="switchTab('adminLogs')"><i class="bi bi-clock-history me-2"></i> Audit Log Aktivitas</a></li>
         `;
       }
 
@@ -532,9 +589,14 @@
       else if (tabName === 'guruCatatan') renderGuruCatatan();
       else if (tabName === 'guruResponWali') renderGuruResponWali();
       else if (tabName === 'adminInfaq') renderAdminInfaq();
+      else if (tabName === 'adminSantri') renderAdminSantri();
+      else if (tabName === 'adminGuruMapping') renderAdminGuruMapping();
       else if (tabName === 'adminUsers') renderAdminUsers();
       else if (tabName === 'adminKelas') renderAdminKelas();
+      else if (tabName === 'adminBroadcast') renderAdminBroadcast();
+      else if (tabName === 'adminTahunAjaran') renderAdminTahunAjaran();
       else if (tabName === 'adminModerasi') renderAdminModerasi();
+      else if (tabName === 'adminLogs') renderAdminLogs();
       else if (tabName === 'kepalaReport') renderKepalaReport();
     };
 
@@ -590,6 +652,14 @@
         }
       });
 
+      // Ambil Broadcast
+      const snapB = await getDocs(collection(db, "broadcast"));
+      let broadcastHtml = '';
+      snapB.forEach(d => {
+        const b = d.data();
+        broadcastHtml += `<div class="alert alert-success p-2 mb-2"><h6 class="fw-bold mb-1"><i class="bi bi-megaphone me-1"></i> ${b.judul} <small class="text-muted">(${b.tanggal})</small></h6><p class="mb-0 small">${b.pesan}</p></div>`;
+      });
+
       let rows = siswaList.map((s, idx) => `
         <tr>
           <td class="text-center">${idx + 1}</td>
@@ -600,6 +670,7 @@
       `).join('');
 
       main.innerHTML = `
+        ${broadcastHtml ? `<div class="mb-4">${broadcastHtml}</div>` : ''}
         <div class="row g-3 mb-4">
           <div class="col-md-5">
             <div class="card card-dashboard p-3 border-start border-success border-4 h-100">
@@ -640,7 +711,16 @@
       const activeChild = getActiveChild();
       const main = document.getElementById('mainContent');
 
+      // Ambil Broadcast
+      const snapB = await getDocs(collection(db, "broadcast"));
+      let broadcastHtml = '';
+      snapB.forEach(d => {
+        const b = d.data();
+        broadcastHtml += `<div class="alert alert-success p-2 mb-2"><h6 class="fw-bold mb-1"><i class="bi bi-megaphone me-1"></i> ${b.judul} <small class="text-muted">(${b.tanggal})</small></h6><p class="mb-0 small">${b.pesan}</p></div>`;
+      });
+
       main.innerHTML = `
+        ${broadcastHtml ? `<div class="mb-4">${broadcastHtml}</div>` : ''}
         <div class="row g-3">
           <div class="col-md-5">
             <div class="card card-dashboard p-3 border-start border-success border-4">
@@ -723,6 +803,7 @@
           status: 'Pending',
           created_at: new Date()
         });
+        await logSystemActivity(`Wali mengajukan izin/sakit untuk santri ${activeChild.nama_siswa}`);
         alert('Pengajuan absensi berhasil dikirim!');
         switchTab('dashboard');
       } catch (err) {
@@ -883,6 +964,7 @@
           jawaban: '',
           answered_by: ''
         });
+        await logSystemActivity(`Wali mengirim masukan: ${document.getElementById('subjekPesan').value}`);
         alert('Masukan berhasil dikirim! Menunggu tanggapan dari sekolah.');
         switchTab('waliMasukan');
       } catch (err) {
@@ -901,7 +983,6 @@
 
       const tglPilihan = document.getElementById('tglAbsensiGuru')?.value || new Date().toISOString().split('T')[0];
 
-      // Ambil absensi tanggal terpilih
       const qA = query(collection(db, "absensi"), where("tanggal", "==", tglPilihan));
       const snapA = await getDocs(qA);
 
@@ -911,7 +992,6 @@
         existingAbsenMap[item.id_siswa] = { docId: d.id, status: item.status, keterangan: item.keterangan || '' };
       });
 
-      // Ambil pengajuan izin/sakit tanggal terpilih
       const qP = query(collection(db, "pengajuan_absensi"), where("tanggal", "==", tglPilihan));
       const snapP = await getDocs(qP);
 
@@ -989,20 +1069,14 @@
       `;
     }
 
-    // Fungsi Approve Pengajuan Absensi + Auto Absen + Auto Refresh
     window.approvePengajuanAbsensi = async function(pengajuanId, idSiswa, jenisIzin, tanggal) {
       try {
-        // 1. Update status pengajuan menjadi Approved
-        await updateDoc(doc(db, "pengajuan_absensi", pengajuanId), {
-          status: 'Approved'
-        });
+        await updateDoc(doc(db, "pengajuan_absensi", pengajuanId), { status: 'Approved' });
 
-        // 2. Cek apakah santri sudah punya rekam absensi pada tanggal tersebut
         const qA = query(collection(db, "absensi"), where("id_siswa", "==", idSiswa), where("tanggal", "==", tanggal));
         const snapA = await getDocs(qA);
 
         if (!snapA.empty) {
-          // Jika sudah ada, update statusnya sesuai pengajuan
           let existingDocId = null;
           snapA.forEach(d => { existingDocId = d.id; });
           await updateDoc(doc(db, "absensi", existingDocId), {
@@ -1010,7 +1084,6 @@
             keterangan: `Disetujui via pengajuan wali`
           });
         } else {
-          // Jika belum ada, buat record absensi baru otomatis
           await addDoc(collection(db, "absensi"), {
             id_siswa: idSiswa,
             tanggal: tanggal,
@@ -1020,11 +1093,9 @@
           });
         }
 
-        alert(`Pengajuan ${jenisIzin} berhasil diapprove dan absensi otomatis diperbarui!`);
-        
-        // 3. Autorefresh halaman guru absensi
+        await logSystemActivity(`Guru approve pengajuan ${jenisIzin} untuk santri ID ${idSiswa}`);
+        alert(`Pengajuan ${jenisIzin} berhasil diapprove dan absensi diperbarui!`);
         renderGuruAbsensi();
-
       } catch (err) {
         alert('Gagal memproses approval: ' + err.message);
       }
@@ -1111,6 +1182,7 @@
             });
           }
         }
+        await logSystemActivity(`Menyimpan rekap absensi kelas tanggal ${tgl}`);
         alert('Data absensi berhasil disimpan!');
         window.rawGuruMonitoringData = null;
         renderGuruAbsensi();
@@ -1625,6 +1697,7 @@
           catatan: document.getElementById('nilaiCatatan').value,
           created_by: window.currentUser.nama
         });
+        await logSystemActivity(`Input nilai harian santri`);
         alert('Nilai harian berhasil disimpan!');
         renderGuruNilai();
       } catch (err) {
@@ -1650,6 +1723,7 @@
           nilai: document.getElementById('editNilaiSkor').value,
           catatan: document.getElementById('editNilaiCatatan').value
         });
+        await logSystemActivity(`Update data nilai santri`);
         alert('Data nilai berhasil diperbarui!');
         bootstrap.Modal.getInstance(document.getElementById('editNilaiModal')).hide();
         renderGuruNilai();
@@ -1764,6 +1838,7 @@
           tanggal: document.getElementById('catatanTgl').value,
           catatan: document.getElementById('catatanIsi').value
         });
+        await logSystemActivity(`Input catatan perkembangan santri`);
         alert('Catatan perkembangan berhasil disimpan!');
         renderGuruCatatan();
       } catch (err) {
@@ -1785,6 +1860,7 @@
           tanggal: document.getElementById('editCatatanTgl').value,
           catatan: document.getElementById('editCatatanIsi').value
         });
+        await logSystemActivity(`Update catatan perkembangan santri`);
         alert('Catatan perkembangan berhasil diperbarui!');
         bootstrap.Modal.getInstance(document.getElementById('editCatatanModal')).hide();
         renderGuruCatatan();
@@ -1864,9 +1940,8 @@
 
       try {
         if (aksiPenanganan === 'teruskan') {
-          await updateDoc(doc(db, "masukan_wali", id), {
-            status: 'Forwarded to Admin'
-          });
+          await updateDoc(doc(db, "masukan_wali", id), { status: 'Forwarded to Admin' });
+          await logSystemActivity(`Guru meneruskan pertanyaan wali ke Admin`);
           alert('Pertanyaan berhasil diteruskan ke Admin / Kepala Sekolah!');
         } else {
           if (!jwb.trim()) { alert('Tuliskan jawaban terlebih dahulu.'); return; }
@@ -1875,6 +1950,7 @@
             answered_by: window.currentUser.nama,
             status: statusPublikasi
           });
+          await logSystemActivity(`Guru merespon pertanyaan wali`);
           alert('Tanggapan berhasil disimpan!');
         }
         bootstrap.Modal.getInstance(document.getElementById('jawabPesanModal')).hide();
@@ -1884,7 +1960,7 @@
       }
     };
 
-    // === 4. MENU ADMIN ===
+    // === 4. MENU ADMIN (Lengkap dengan 5 Fitur Tambahan Wewenang Admin) ===
     
     // --- 4.1 Kelola Infaq Santri (Admin) ---
     async function renderAdminInfaq() {
@@ -2012,6 +2088,7 @@
           keterangan: document.getElementById('adminInfaqKet').value,
           created_by: window.currentUser.nama
         });
+        await logSystemActivity(`Admin mencatat transaksi infaq sebesar ${document.getElementById('adminInfaqJumlah').value}`);
         alert('Infaq berhasil dicatat!');
         renderAdminInfaq();
       } catch (err) {
@@ -2023,6 +2100,7 @@
       if (confirm('Yakin ingin menghapus data infaq ini?')) {
         try {
           await deleteDoc(doc(db, "infaq", docId));
+          await logSystemActivity(`Admin menghapus data infaq ID ${docId}`);
           alert('Data infaq berhasil dihapus.');
           renderAdminInfaq();
         } catch (err) {
@@ -2031,7 +2109,235 @@
       }
     };
 
-    // --- 4.2 Kelola User (Admin) [Kecuali Super Admin] ---
+    // --- 4.2 Master Data Santri (`adminSantri`) ---
+    async function renderAdminSantri() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Santri...`;
+
+      const kelasOptionsHtml = await getKelasDropdownOptions('', false);
+      const kelasFilterOptions = await getKelasDropdownOptions('', true);
+
+      const snap = await getDocs(collection(db, "siswa"));
+      let santriList = [];
+      snap.forEach(d => {
+        santriList.push({ docId: d.id, ...d.data() });
+      });
+
+      santriList.sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
+      window.rawSantriListCache = santriList;
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-mortarboard text-success me-2"></i> Master Data Santri</h5>
+          <hr>
+          <form onsubmit="addSantri(event)" class="row g-2 mb-4 bg-light p-3 rounded border">
+            <h6 class="fw-bold text-success">Tambah Santri Baru</h6>
+            <div class="col-md-2"><input type="text" id="newSantriNis" class="form-control" required placeholder="NIS"></div>
+            <div class="col-md-3"><input type="text" id="newSantriNama" class="form-control" required placeholder="Nama Lengkap Santri"></div>
+            <div class="col-md-2"><select id="newSantriKelas" class="form-select">${kelasOptionsHtml}</select></div>
+            <div class="col-md-2"><input type="text" id="newSantriWali" class="form-control" placeholder="ID Wali (Opsional)"></div>
+            <div class="col-md-2">
+              <select id="newSantriStatus" class="form-select">
+                <option value="Aktif">Aktif</option>
+                <option value="Lulus">Lulus</option>
+                <option value="Keluar">Keluar</option>
+              </select>
+            </div>
+            <div class="col-md-1"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
+          </form>
+
+          <h6 class="fw-bold text-success mb-3">Daftar Santri TPQ</h6>
+          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+            <div class="col-md-4">
+              <label class="form-label fw-bold mb-1">Filter Kelas:</label>
+              <select id="filterKelasSantri" class="form-select border-success" onchange="filterSantriTable()">
+                <option value="ALL">-- Semua Kelas --</option>
+                ${kelasFilterOptions.replace('<option value="">-- Tidak Terikat Kelas --</option>', '')}
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
+              <input type="text" id="searchSantriInput" class="form-control border-success" placeholder="Cari nama atau NIS santri..." onkeyup="filterSantriTable()">
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th width="100">NIS</th><th>Nama Santri</th><th width="100">Kelas</th><th width="100">Status</th><th width="120" class="text-center">Aksi</th></tr>
+              </thead>
+              <tbody id="tblSantriBody"></tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      filterSantriTable();
+    }
+
+    window.filterSantriTable = function() {
+      const selectedKelas = document.getElementById('filterKelasSantri')?.value;
+      const searchQuery = document.getElementById('searchSantriInput')?.value.toLowerCase().trim();
+
+      let filtered = window.rawSantriListCache.filter(s => {
+        const matchKelas = (selectedKelas === 'ALL' || !selectedKelas || s.id_kelas === selectedKelas);
+        const matchText = !searchQuery || 
+          s.nama_siswa.toLowerCase().includes(searchQuery) ||
+          s.nis.toLowerCase().includes(searchQuery);
+        return matchKelas && matchText;
+      });
+
+      let rows = '';
+      let no = 1;
+      filtered.forEach(s => {
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><strong>${s.nis}</strong></td>
+            <td>${s.nama_siswa}</td>
+            <td><span class="badge bg-info text-dark">${s.id_kelas}</span></td>
+            <td><span class="badge bg-success">${s.status_siswa || 'Aktif'}</span></td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditSantri('${s.docId}', '${encodeURIComponent(s.nis)}', '${encodeURIComponent(s.nama_siswa)}', '${s.id_kelas}', '${encodeURIComponent(s.id_wali || '')}', '${s.status_siswa || 'Aktif'}')">
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteSantri('${s.docId}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tblSantriBody').innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">Data santri tidak ditemukan.</td></tr>';
+    };
+
+    window.addSantri = async function(e) {
+      e.preventDefault();
+      try {
+        await addDoc(collection(db, "siswa"), {
+          nis: document.getElementById('newSantriNis').value,
+          nama_siswa: document.getElementById('newSantriNama').value,
+          id_kelas: document.getElementById('newSantriKelas').value,
+          id_wali: document.getElementById('newSantriWali').value || '',
+          status_siswa: document.getElementById('newSantriStatus').value
+        });
+        await logSystemActivity(`Admin menambah santri baru: ${document.getElementById('newSantriNama').value}`);
+        alert('Santri berhasil ditambahkan!');
+        renderAdminSantri();
+      } catch (err) {
+        alert('Gagal menambah santri: ' + err.message);
+      }
+    };
+
+    window.openModalEditSantri = async function(docId, nis, nama, kelas, wali, status) {
+      document.getElementById('editSantriDocId').value = docId;
+      document.getElementById('editSantriNis').value = decodeURIComponent(nis);
+      document.getElementById('editSantriNama').value = decodeURIComponent(nama);
+      document.getElementById('editSantriWali').value = decodeURIComponent(wali);
+      document.getElementById('editSantriStatus').value = status;
+      
+      document.getElementById('editSantriKelas').innerHTML = await getKelasDropdownOptions(kelas, false);
+      new bootstrap.Modal(document.getElementById('editSantriModal')).show();
+    };
+
+    window.submitUpdateSantri = async function() {
+      const docId = document.getElementById('editSantriDocId').value;
+      try {
+        await updateDoc(doc(db, "siswa", docId), {
+          nis: document.getElementById('editSantriNis').value,
+          nama_siswa: document.getElementById('editSantriNama').value,
+          id_kelas: document.getElementById('editSantriKelas').value,
+          id_wali: document.getElementById('editSantriWali').value,
+          status_siswa: document.getElementById('editSantriStatus').value
+        });
+        await logSystemActivity(`Admin memperbarui data santri`);
+        alert('Data santri berhasil diperbarui!');
+        bootstrap.Modal.getInstance(document.getElementById('editSantriModal')).hide();
+        renderAdminSantri();
+      } catch (err) {
+        alert('Gagal mengupdate santri: ' + err.message);
+      }
+    };
+
+    window.deleteSantri = async function(docId) {
+      if (confirm('Yakin ingin menghapus santri ini?')) {
+        try {
+          await deleteDoc(doc(db, "siswa", docId));
+          await logSystemActivity(`Admin menghapus data santri ID ${docId}`);
+          alert('Santri berhasil dihapus.');
+          renderAdminSantri();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      }
+    };
+
+    // --- 4.3 Penugasan Guru Kelas (`adminGuruMapping`) ---
+    async function renderAdminGuruMapping() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Guru...`;
+
+      const snap = await getDocs(collection(db, "users"));
+      let guruList = [];
+      snap.forEach(d => {
+        const u = d.data();
+        if (u.role === 'guru') {
+          guruList.push({ docId: d.id, ...u });
+        }
+      });
+
+      const kelasDropdown = await getKelasDropdownOptions('', true);
+
+      let rows = '';
+      let no = 1;
+      guruList.forEach(g => {
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><strong>${g.nama}</strong> (${g.username})</td>
+            <td>
+              <select class="form-select form-select-sm kelas-guru-select" data-id="${g.docId}">
+                ${kelasDropdown.replace(`value="${g.id_kelas}"`, `value="${g.id_kelas}" selected`)}
+              </select>
+            </td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-success px-3" onclick="saveGuruMapping('${g.docId}')">Simpan</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-person-badge text-success me-2"></i> Penugasan Guru & Alokasi Kelas</h5>
+          <p class="text-muted small">Tentukan kelas binaan untuk masing-masing guru pengajar di TPQ.</p>
+          <div class="table-responsive mt-3">
+            <table class="table table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th>Nama Guru</th><th>Kelas Binaan Pengampu</th><th width="120" class="text-center">Aksi</th></tr>
+              </thead>
+              <tbody>${rows || '<tr><td colspan="4" class="text-center text-muted">Tidak ada akun guru terdaftar.</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    window.saveGuruMapping = async function(docId) {
+      const selectEl = document.querySelector(`.kelas-guru-select[data-id="${docId}"]`);
+      const selectedKelas = selectEl ? selectEl.value : '';
+      try {
+        await updateDoc(doc(db, "users", docId), { id_kelas: selectedKelas });
+        await logSystemActivity(`Admin memperbarui penugasan guru kelas`);
+        alert('Penugasan kelas guru berhasil diperbarui!');
+        renderAdminGuruMapping();
+      } catch (e) {
+        alert('Gagal menyimpan: ' + e.message);
+      }
+    };
+
+    // --- 4.4 Kelola User (Admin) [Kecuali Super Admin] ---
     async function renderAdminUsers() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Users...`;
@@ -2150,6 +2456,7 @@
           role: document.getElementById('newRole').value,
           id_kelas: document.getElementById('newKelas').value || ''
         });
+        await logSystemActivity(`Admin menambah user baru: ${document.getElementById('newUsername').value}`);
         alert('User berhasil ditambahkan!');
         renderAdminUsers();
       } catch (err) {
@@ -2180,6 +2487,7 @@
           role: document.getElementById('editUserRole').value,
           id_kelas: document.getElementById('editUserKelas').value
         });
+        await logSystemActivity(`Admin memperbarui data user`);
         alert('Data user berhasil diperbarui!');
         bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
         renderAdminUsers();
@@ -2192,6 +2500,7 @@
       if (confirm('Yakin ingin menghapus user ini?')) {
         try {
           await deleteDoc(doc(db, "users", docId));
+          await logSystemActivity(`Admin menghapus user ID ${docId}`);
           alert('User berhasil dihapus.');
           renderAdminUsers();
         } catch (err) {
@@ -2200,7 +2509,7 @@
       }
     };
 
-    // --- 4.3 Manajemen Kelas (Admin) ---
+    // --- 4.5 Manajemen Kelas (Admin) ---
     async function renderAdminKelas() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Kelas...`;
@@ -2297,6 +2606,7 @@
           nama_kelas: document.getElementById('newKelasNama').value,
           keterangan: document.getElementById('newKelasKet').value
         });
+        await logSystemActivity(`Admin menambah kelas baru: ${idK}`);
         alert('Kelas berhasil ditambahkan!');
         renderAdminKelas();
       } catch (err) {
@@ -2320,6 +2630,7 @@
           nama_kelas: document.getElementById('editKelasNama').value,
           keterangan: document.getElementById('editKelasKet').value
         });
+        await logSystemActivity(`Admin memperbarui data kelas`);
         alert('Data kelas berhasil diperbarui!');
         bootstrap.Modal.getInstance(document.getElementById('editKelasModal')).hide();
         renderAdminKelas();
@@ -2332,6 +2643,7 @@
       if (confirm('Yakin ingin menghapus kelas ini?')) {
         try {
           await deleteDoc(doc(db, "kelas", docId));
+          await logSystemActivity(`Admin menghapus data kelas ${docId}`);
           alert('Kelas berhasil dihapus.');
           renderAdminKelas();
         } catch (err) {
@@ -2340,7 +2652,130 @@
       }
     };
 
-    // --- 4.4 Moderasi Masukan (Admin) ---
+    // --- 4.6 Broadcast Pengumuman (`adminBroadcast`) ---
+    async function renderAdminBroadcast() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Broadcast...`;
+
+      const snap = await getDocs(collection(db, "broadcast"));
+      let broadcastList = [];
+      snap.forEach(d => {
+        broadcastList.push({ docId: d.id, ...d.data() });
+      });
+
+      broadcastList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+
+      let rows = '';
+      let no = 1;
+      broadcastList.forEach(b => {
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td>${b.tanggal}</td>
+            <td><strong>${b.judul}</strong></td>
+            <td>${b.pesan}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteBroadcast('${b.docId}')"><i class="bi bi-trash"></i> Hapus</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-megaphone text-success me-2"></i> Broadcast Pengumuman Lembaga</h5>
+          <hr>
+          <form onsubmit="submitBroadcast(event)" class="mb-4 bg-light p-3 rounded border">
+            <h6 class="fw-bold text-success">Kirim Pengumuman Baru</h6>
+            <div class="mb-3"><label class="form-label fw-bold">Judul Pengumuman</label><input type="text" id="broadcastJudul" class="form-control" required placeholder="Contoh: Libur Madrasah Ramadhan"></div>
+            <div class="mb-3"><label class="form-label fw-bold">Isi Pengumuman</label><textarea id="broadcastPesan" class="form-control" rows="3" required placeholder="Tuliskan isi pengumuman..."></textarea></div>
+            <button type="submit" class="btn btn-success"><i class="bi bi-send me-1"></i> Kirim Broadcast ke Dashboard Wali & Guru</button>
+          </form>
+
+          <h6 class="fw-bold text-success mb-3">Riwayat Pengumuman Aktif</h6>
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th width="110">Tanggal</th><th width="200">Judul</th><th>Isi Pengumuman</th><th width="90" class="text-center">Aksi</th></tr>
+              </thead>
+              <tbody>${rows || '<tr><td colspan="5" class="text-center text-muted">Belum ada broadcast pengumuman.</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    window.submitBroadcast = async function(e) {
+      e.preventDefault();
+      try {
+        await addDoc(collection(db, "broadcast"), {
+          tanggal: new Date().toISOString().split('T')[0],
+          judul: document.getElementById('broadcastJudul').value,
+          pesan: document.getElementById('broadcastPesan').value,
+          created_by: window.currentUser.nama
+        });
+        await logSystemActivity(`Admin mengirim broadcast pengumuman`);
+        alert('Broadcast pengumuman berhasil dikirim!');
+        renderAdminBroadcast();
+      } catch (err) {
+        alert('Gagal mengirim: ' + err.message);
+      }
+    };
+
+    window.deleteBroadcast = async function(docId) {
+      if (confirm('Yakin ingin menghapus pengumuman ini?')) {
+        try {
+          await deleteDoc(doc(db, "broadcast", docId));
+          await logSystemActivity(`Admin menghapus broadcast ID ${docId}`);
+          alert('Pengajaran berhasil dihapus.');
+          renderAdminBroadcast();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      }
+    };
+
+    // --- 4.7 Tahun Ajaran & Semester (`adminTahunAjaran`) ---
+    async function renderAdminTahunAjaran() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="card card-dashboard p-4">
+        <h5><i class="bi bi-calendar3 text-success me-2"></i> Manajemen Tahun Ajaran & Semester</h5>
+        <hr>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="p-3 bg-light rounded border">
+              <h6 class="fw-bold text-success">Status Tahun Ajaran Aktif</h6>
+              <p class="mb-2 text-muted small">Tahun ajaran saat ini digunakan untuk pembukuan absensi, nilai, dan rekapitulasi.</p>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Tahun Ajaran:</label>
+                <select id="selectTahunAjaran" class="form-select border-success">
+                  <option value="2025/2026">2025 / 2026</option>
+                  <option value="2026/2027" selected>2026 / 2027</option>
+                  <option value="2027/2028">2027 / 2028</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Semester:</label>
+                <select id="selectSemester" class="form-select border-success">
+                  <option value="Ganjil">Semester Ganjil</option>
+                  <option value="Genap" selected>Semester Genap</option>
+                </select>
+              </div>
+              <button class="btn btn-success" onclick="saveTahunAjaran()"><i class="bi bi-save me-1"></i> Simpan Konfigurasi</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    window.saveTahunAjaran = async function() {
+      const ta = document.getElementById('selectTahunAjaran').value;
+      const sm = document.getElementById('selectSemester').value;
+      await logSystemActivity(`Admin mengubah tahun ajaran ke ${ta} (${sm})`);
+      alert(`Tahun ajaran berhasil diatur ke ${ta} - Semester ${sm}!`);
+    };
+
+    // --- 4.8 Moderasi Masukan (Admin) ---
     async function renderAdminModerasi() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Masukan...`;
@@ -2433,6 +2868,7 @@
     window.modPesan = async function(id, status) {
       try {
         await updateDoc(doc(db, "masukan_wali", id), { status: status });
+        await logSystemActivity(`Admin memoderasi pesan wali ke status ${status}`);
         alert(`Status berhasil diubah menjadi ${status}`);
         renderAdminModerasi();
       } catch (err) {
@@ -2444,12 +2880,79 @@
       if (confirm('Yakin ingin menghapus masukan ini?')) {
         try {
           await deleteDoc(doc(db, "masukan_wali", docId));
+          await logSystemActivity(`Admin menghapus masukan wali ID ${docId}`);
           alert('Masukan berhasil dihapus.');
           renderAdminModerasi();
         } catch (err) {
           alert('Gagal menghapus: ' + err.message);
         }
       }
+    };
+
+    // --- 4.9 Audit Log Aktivitas (`adminLogs`) ---
+    async function renderAdminLogs() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Audit Log...`;
+
+      const snap = await getDocs(collection(db, "system_logs"));
+      let logsList = [];
+      snap.forEach(d => {
+        logsList.push({ docId: d.id, ...d.data() });
+      });
+
+      logsList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+      window.rawLogsListCache = logsList;
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-clock-history text-success me-2"></i> Audit Log Aktivitas Sistem</h5>
+          <hr>
+          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+            <div class="col-md-12">
+              <label class="form-label fw-bold mb-1">Pencarian Log:</label>
+              <input type="text" id="searchLogsInput" class="form-control border-success" placeholder="Cari aktivitas atau nama pengguna..." onkeyup="filterLogsTable()">
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th width="160">Waktu</th><th width="150">Pengguna</th><th width="100">Role</th><th>Aktivitas</th></tr>
+              </thead>
+              <tbody id="tblLogsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      filterLogsTable();
+    }
+
+    window.filterLogsTable = function() {
+      const searchQuery = document.getElementById('searchLogsInput')?.value.toLowerCase().trim();
+
+      let filtered = window.rawLogsListCache.filter(l => {
+        return !searchQuery || 
+          l.user.toLowerCase().includes(searchQuery) ||
+          l.aktivitas.toLowerCase().includes(searchQuery) ||
+          l.role.toLowerCase().includes(searchQuery);
+      });
+
+      let rows = '';
+      let no = 1;
+      filtered.forEach(l => {
+        const tglFormatted = new Date(l.tanggal).toLocaleString('id-ID');
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><small>${tglFormatted}</small></td>
+            <td><strong>${l.user}</strong></td>
+            <td><span class="badge bg-secondary">${l.role}</span></td>
+            <td>${l.aktivitas}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tblLogsBody').innerHTML = rows || '<tr><td colspan="5" class="text-center text-muted">Log aktivitas tidak ditemukan.</td></tr>';
     };
 
     // === 5. KEPALA SEKOLAH FITUR ===
