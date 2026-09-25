@@ -467,6 +467,28 @@
     </div>
   </div>
 
+  <!-- MODAL TAMBAH & EDIT RECORD DATABASE (SUPER ADMIN) -->
+  <div class="modal fade" id="dbRecordModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6" id="dbModalTitle"><i class="bi bi-database-gear me-2"></i>Kelola Data Record Database</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          <input type="hidden" id="dbModalMode">
+          <input type="hidden" id="dbModalCollection">
+          <input type="hidden" id="dbModalDocId">
+          <div id="dbModalFormFields" class="row g-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="submitDBRecordModal()"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="printableReportArea"></div>
 
   <!-- FIREBASE SDK & APPLICATION LOGIC -->
@@ -510,6 +532,8 @@
     window.rawWaliUsersCache = [];
     window.rawTahunAjaranCache = [];
     window.rawBroadcastListCache = [];
+    window.rawDBCollectionCache = [];
+    window.currentSelectedCollection = 'siswa';
 
     // Super Admin Global Filter State
     window.superAdminFilter = {
@@ -3146,7 +3170,7 @@
     }
 
 
-    // === 6. SUPER ADMIN: KELOLA DATABASE (SUB-MENU TABEL FIREBASE DENGAN CRUD & SEARCH) ===
+    // === 6. SUPER ADMIN: KELOLA DATABASE (TABEL & MODAL EDIT FORM YANG AKURAT) ===
     async function renderSuperAdminDB(specificTable = 'siswa') {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Kelola Database (${specificTable})...`;
@@ -3203,25 +3227,32 @@
       });
 
       const paginated = paginateArray(filtered, 'dbManager');
-      let headersHtml = `<th width="40" class="text-center">No</th><th width="180">Document ID</th>`;
-      
-      if (filtered.length > 0) {
-        const sampleKeys = Object.keys(filtered[0]).filter(k => k !== 'docId');
-        sampleKeys.forEach(k => { headersHtml += `<th>${k}</th>`; });
-      }
-      headersHtml += `<th width="130" class="text-center">Aksi (CRUD)</th>`;
+
+      // Mengumpulkan SEMUA unique keys dari seluruh dokumen agar header & isian sinkron akurat
+      let allKeysSet = new Set();
+      dataList.forEach(item => {
+        Object.keys(item).forEach(k => {
+          if (k !== 'docId') allKeysSet.add(k);
+        });
+      });
+      let allKeys = Array.from(allKeysSet);
+
+      let headersHtml = `<th width="40" class="text-center">No</th><th width="160">Document ID</th>`;
+      allKeys.forEach(k => { headersHtml += `<th>${k}</th>`; });
+      headersHtml += `<th width="120" class="text-center">Aksi (CRUD)</th>`;
 
       let rowsHtml = '';
       let no = (window.paginationState.dbManager.page - 1) * window.paginationState.dbManager.limit + 1;
 
       paginated.forEach(item => {
         let colsHtml = `<td class="text-center">${no++}</td><td><code class="small">${item.docId}</code></td>`;
-        const sampleKeys = Object.keys(item).filter(k => k !== 'docId');
         
-        sampleKeys.forEach(k => {
+        allKeys.forEach(k => {
           let val = item[k];
-          if (typeof val === 'object' && val !== null) val = JSON.stringify(val);
-          colsHtml += `<td><div style="max-height:60px; overflow-y:auto; font-size:0.85rem;">${val !== undefined ? val : ''}</div></td>`;
+          if (typeof val === 'object' && val !== null) {
+            val = JSON.stringify(val);
+          }
+          colsHtml += `<td><div style="max-height:60px; overflow-y:auto; font-size:0.85rem;">${val !== undefined && val !== null ? val : ''}</div></td>`;
         });
 
         colsHtml += `
@@ -3236,29 +3267,29 @@
       document.getElementById('dbTableContainer').innerHTML = `
         <table class="table table-sm table-bordered table-striped align-middle">
           <thead class="table-success"><tr>${headersHtml}</tr></thead>
-          <tbody>${rowsHtml || '<tr><td colspan="100" class="text-center text-muted">Tidak ada data ditemukan.</td></tr>'}</tbody>
+          <tbody>${rowsHtml || '<tr><td colspan="' + (allKeys.length + 3) + '" class="text-center text-muted">Tidak ada data ditemukan.</td></tr>'}</tbody>
         </table>
       `;
       document.getElementById('paginationDBManager').innerHTML = renderPaginationControls('dbManager', filtered.length, filterDatabaseTable);
     };
 
     window.openAddDBRecordModal = function(colName) {
-      let sampleItem = (window.rawDBCollectionCache && window.rawDBCollectionCache.length > 0) ? { ...window.rawDBCollectionCache[0] } : { nama: '' };
-      delete sampleItem.docId;
+      document.getElementById('dbModalMode').value = 'add';
+      document.getElementById('dbModalCollection').value = colName;
+      document.getElementById('dbModalDocId').value = '';
+      document.getElementById('dbModalTitle').innerHTML = `<i class="bi bi-plus-circle me-2"></i>Tambah Data Baru ke [${colName}]`;
 
-      let valJson = prompt(`Tambah Data Baru ke Tabel [${colName}]. Format JSON:`, JSON.stringify(sampleItem, null, 2));
-      if (valJson) {
-        try {
-          let parsedObj = JSON.parse(valJson);
-          addDoc(collection(db, colName), parsedObj).then(() => {
-            logSystemActivity(`Menambah data ke tabel ${colName}`);
-            alert('Data berhasil ditambahkan!');
-            loadDatabaseCollectionData(colName);
-          }).catch(e => alert('Gagal menambah: ' + e.message));
-        } catch (e) {
-          alert('Format JSON tidak valid: ' + e.message);
-        }
+      let sampleItem = {};
+      if (window.rawDBCollectionCache && window.rawDBCollectionCache.length > 0) {
+        let sample = { ...window.rawDBCollectionCache[0] };
+        delete sample.docId;
+        Object.keys(sample).forEach(k => { sampleItem[k] = ''; });
+      } else {
+        sampleItem = { nama: '', keterangan: '' };
       }
+
+      renderDBModalFields(sampleItem);
+      new bootstrap.Modal(document.getElementById('dbRecordModal')).show();
     };
 
     window.openEditDBRecordModal = function(docId) {
@@ -3266,21 +3297,65 @@
       const itemObj = (window.rawDBCollectionCache || []).find(i => i.docId === docId);
       if (!itemObj) return;
 
+      document.getElementById('dbModalMode').value = 'edit';
+      document.getElementById('dbModalCollection').value = colName;
+      document.getElementById('dbModalDocId').value = docId;
+      document.getElementById('dbModalTitle').innerHTML = `<i class="bi bi-pencil-square me-2"></i>Edit Dokumen [${docId}] di [${colName}]`;
+
       let cleanObj = { ...itemObj };
       delete cleanObj.docId;
+      renderDBModalFields(cleanObj);
+      new bootstrap.Modal(document.getElementById('dbRecordModal')).show();
+    };
 
-      let valJson = prompt(`Edit Dokumen [${docId}] di Tabel [${colName}]:`, JSON.stringify(cleanObj, null, 2));
-      if (valJson) {
-        try {
-          let parsedObj = JSON.parse(valJson);
-          updateDoc(doc(db, colName, docId), parsedObj).then(() => {
-            logSystemActivity(`Mengupdate dokumen ${docId} di tabel ${colName}`);
-            alert('Data berhasil diperbarui!');
-            loadDatabaseCollectionData(colName);
-          }).catch(e => alert('Gagal update: ' + e.message));
-        } catch (e) {
-          alert('Format JSON tidak valid: ' + e.message);
+    function renderDBModalFields(obj) {
+      let html = '';
+      Object.keys(obj).forEach(k => {
+        let val = obj[k] !== undefined && obj[k] !== null ? obj[k] : '';
+        if (typeof val === 'object') val = JSON.stringify(val);
+        html += `
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-secondary">${k}</label>
+            <input type="text" class="form-control form-control-sm db-field-input" data-key="${k}" value="${val}">
+          </div>
+        `;
+      });
+      document.getElementById('dbModalFormFields').innerHTML = html || '<div class="text-muted">Tidak ada field.</div>';
+    }
+
+    window.submitDBRecordModal = async function() {
+      const mode = document.getElementById('dbModalMode').value;
+      const colName = document.getElementById('dbModalCollection').value;
+      const docId = document.getElementById('dbModalDocId').value;
+
+      let payload = {};
+      document.querySelectorAll('.db-field-input').forEach(input => {
+        let key = input.getAttribute('data-key');
+        let val = input.value;
+        if (!isNaN(val) && val.trim() !== '') {
+          val = Number(val);
+        } else if (val.toLowerCase() === 'true') {
+          val = true;
+        } else if (val.toLowerCase() === 'false') {
+          val = false;
         }
+        payload[key] = val;
+      });
+
+      try {
+        if (mode === 'add') {
+          await addDoc(collection(db, colName), payload);
+          await logSystemActivity(`Menambah data baru ke tabel ${colName}`);
+          alert('Data berhasil ditambahkan!');
+        } else {
+          await updateDoc(doc(db, colName, docId), payload);
+          await logSystemActivity(`Mengupdate dokumen ${docId} di tabel ${colName}`);
+          alert('Data berhasil diperbarui!');
+        }
+        bootstrap.Modal.getInstance(document.getElementById('dbRecordModal')).hide();
+        loadDatabaseCollectionData(colName);
+      } catch (err) {
+        alert('Gagal menyimpan data: ' + err.message);
       }
     };
 
