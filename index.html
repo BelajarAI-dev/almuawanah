@@ -241,7 +241,7 @@
               <option value="kepalasekolah">Kepala Sekolah</option>
             </select>
           </div>
-          <div class="mb-3"><label class="form-label fw-bold">ID Kelas (Opsional)</label><input type="text" id="editUserKelas" class="form-control" placeholder="KLS-01"></div>
+          <div class="mb-3"><label class="form-label fw-bold">Kelas</label><select id="editUserKelas" class="form-select"></select></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
@@ -343,6 +343,25 @@
     window.rawUsersListCache = [];
     window.rawKelasListCache = [];
     window.rawModerasiListCache = [];
+
+    // Helper: Ambil Data Kelas dari Database untuk Dropdown
+    async function getKelasDropdownOptions(selectedVal = '', includeEmpty = false) {
+      try {
+        const snap = await getDocs(collection(db, "kelas"));
+        let options = includeEmpty ? '<option value="">-- Tidak Terikat Kelas --</option>' : '';
+        snap.forEach(d => {
+          const k = d.data();
+          const isSelected = (k.id_kelas === selectedVal) ? 'selected' : '';
+          options += `<option value="${k.id_kelas}" ${isSelected}>${k.id_kelas} - ${k.nama_kelas}</option>`;
+        });
+        if (snap.empty && !includeEmpty) {
+          options = '<option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>';
+        }
+        return options;
+      } catch (err) {
+        return includeEmpty ? '<option value="">-- Tidak Terikat Kelas --</option><option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>' : '<option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>';
+      }
+    }
 
     // -------------------------------------------------------------
     // AUTHENTICATION & LOGIN
@@ -470,7 +489,7 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruMonitoring" onclick="switchTab('guruMonitoring')"><i class="bi bi-eye me-2"></i> Monitoring Kehadiran Kelas</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruNilai" onclick="switchTab('guruNilai')"><i class="bi bi-journal-check me-2"></i> Kelola Nilai Santri</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruCatatan" onclick="switchTab('guruCatatan')"><i class="bi bi-chat-left-text me-2"></i> Catatan Guru</a></li>
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruResponWali" onclick="switchTab('menu-guruResponWali')"><i class="bi bi-chat-square-quote me-2"></i> Respon & Pertanyaan Wali</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruResponWali" onclick="switchTab('guruResponWali')"><i class="bi bi-chat-square-quote me-2"></i> Respon & Pertanyaan Wali</a></li>
         `;
       }
 
@@ -1795,7 +1814,7 @@
       }
     };
 
-    // === 4. MENU ADMIN (Infaq, Users, Kelas, Moderasi dengan Filter, Live Search & CRUD) ===
+    // === 4. MENU ADMIN ===
     
     // --- 4.1 Kelola Infaq Santri (Admin) ---
     async function renderAdminInfaq() {
@@ -1947,11 +1966,12 @@
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Users...`;
 
+      const kelasOptionsHtml = await getKelasDropdownOptions('', true);
+
       const snap = await getDocs(collection(db, "users"));
       let usersList = [];
       snap.forEach(d => {
         const u = d.data();
-        // Dibatasi tidak bisa menampilkan atribut super admin
         if (u.role !== 'superadmin') {
           usersList.push({ docId: d.id, ...u });
         }
@@ -1977,7 +1997,7 @@
                 <option value="kepalasekolah">Kepala Sekolah</option>
               </select>
             </div>
-            <div class="col-md-2"><input type="text" id="newKelas" class="form-control" placeholder="ID Kelas"></div>
+            <div class="col-md-2"><select id="newKelas" class="form-select">${kelasOptionsHtml}</select></div>
             <div class="col-md-1"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
           </form>
 
@@ -2002,7 +2022,7 @@
           <div class="table-responsive">
             <table class="table table-sm table-bordered align-middle">
               <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th>Username</th><th>Nama Lengkap</th><th width="130">Role</th><th width="100">Kelas</th><th width="120" class="text-center">Aksi</th></tr>
+                <tr><th width="40" class="text-center">No</th><th>Username</th><th>Nama Lengkap</th><th width="130">Role</th><th width="120">Kelas</th><th width="120" class="text-center">Aksi</th></tr>
               </thead>
               <tbody id="tblUsersBody"></tbody>
             </table>
@@ -2067,13 +2087,16 @@
       }
     };
 
-    window.openModalEditUser = function(docId, u, p, n, r, k) {
+    window.openModalEditUser = async function(docId, u, p, n, r, k) {
       document.getElementById('editUserDocId').value = docId;
       document.getElementById('editUserUsername').value = decodeURIComponent(u);
       document.getElementById('editUserPass').value = decodeURIComponent(p);
       document.getElementById('editUserNama').value = decodeURIComponent(n);
       document.getElementById('editUserRole').value = r;
-      document.getElementById('editUserKelas').value = decodeURIComponent(k);
+      
+      const currentKelas = decodeURIComponent(k);
+      document.getElementById('editUserKelas').innerHTML = await getKelasDropdownOptions(currentKelas, true);
+
       new bootstrap.Modal(document.getElementById('editUserModal')).show();
     };
 
@@ -2119,7 +2142,6 @@
       });
 
       if (kelasList.length === 0) {
-        // Buat default data kelas jika kosong agar tabel informatif
         kelasList = [
           { docId: 'KLS-01', id_kelas: 'KLS-01', nama_kelas: 'Kelas 1 TPQ', keterangan: 'Kelas Dasar' }
         ];
