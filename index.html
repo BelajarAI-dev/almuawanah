@@ -219,6 +219,60 @@
     </div>
   </div>
 
+  <!-- MODAL EDIT USER ADMIN -->
+  <div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-pencil-square me-2"></i>Edit Data User</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editUserDocId">
+          <div class="mb-3"><label class="form-label fw-bold">Username</label><input type="text" id="editUserUsername" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Password Baru</label><input type="text" id="editUserPass" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Nama Lengkap</label><input type="text" id="editUserNama" class="form-control" required></div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Role</label>
+            <select id="editUserRole" class="form-select">
+              <option value="guru">Guru</option>
+              <option value="walisiswa">Wali Siswa</option>
+              <option value="admin">Admin</option>
+              <option value="kepalasekolah">Kepala Sekolah</option>
+            </select>
+          </div>
+          <div class="mb-3"><label class="form-label fw-bold">ID Kelas (Opsional)</label><input type="text" id="editUserKelas" class="form-control" placeholder="KLS-01"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="submitUpdateUser()"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT KELAS ADMIN -->
+  <div class="modal fade" id="editKelasModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-pencil-square me-2"></i>Edit Data Kelas</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editKelasDocId">
+          <div class="mb-3"><label class="form-label fw-bold">ID Kelas</label><input type="text" id="editKelasId" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Nama Kelas</label><input type="text" id="editKelasNama" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Keterangan</label><input type="text" id="editKelasKet" class="form-control"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="submitUpdateKelas()"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL KONFIRMASI KONFLIK ABSENSI GURU -->
   <div class="modal fade" id="conflictModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -257,7 +311,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
-      getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where 
+      getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // -------------------------------------------------------------
@@ -285,6 +339,10 @@
     window.rawGuruMonitoringData = null;
     window.rawNilaiListCache = [];
     window.rawCatatanListCache = [];
+    window.rawInfaqListCache = [];
+    window.rawUsersListCache = [];
+    window.rawKelasListCache = [];
+    window.rawModerasiListCache = [];
 
     // -------------------------------------------------------------
     // AUTHENTICATION & LOGIN
@@ -412,7 +470,7 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruMonitoring" onclick="switchTab('guruMonitoring')"><i class="bi bi-eye me-2"></i> Monitoring Kehadiran Kelas</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruNilai" onclick="switchTab('guruNilai')"><i class="bi bi-journal-check me-2"></i> Kelola Nilai Santri</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruCatatan" onclick="switchTab('guruCatatan')"><i class="bi bi-chat-left-text me-2"></i> Catatan Guru</a></li>
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruResponWali" onclick="switchTab('guruResponWali')"><i class="bi bi-chat-square-quote me-2"></i> Respon & Pertanyaan Wali</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruResponWali" onclick="switchTab('menu-guruResponWali')"><i class="bi bi-chat-square-quote me-2"></i> Respon & Pertanyaan Wali</a></li>
         `;
       }
 
@@ -427,7 +485,6 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminUsers" onclick="switchTab('adminUsers')"><i class="bi bi-people me-2"></i> Kelola User</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminKelas" onclick="switchTab('adminKelas')"><i class="bi bi-arrow-left-right me-2"></i> Manajemen Kelas</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminModerasi" onclick="switchTab('adminModerasi')"><i class="bi bi-shield-check me-2"></i> Moderasi Masukan</a></li>
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminSetoranApproval" onclick="switchTab('adminSetoranApproval')"><i class="bi bi-check2-all me-2"></i> Approval Setoran Infaq</a></li>
         `;
       }
 
@@ -459,7 +516,6 @@
       else if (tabName === 'adminUsers') renderAdminUsers();
       else if (tabName === 'adminKelas') renderAdminKelas();
       else if (tabName === 'adminModerasi') renderAdminModerasi();
-      else if (tabName === 'adminSetoranApproval') renderAdminSetoranApproval();
       else if (tabName === 'kepalaReport') renderKepalaReport();
     };
 
@@ -676,7 +732,6 @@
         </div>
       `;
 
-      // 1. Data Absensi
       const qA = query(collection(db, "absensi"), where("id_siswa", "==", activeChild.id_siswa));
       const snapA = await getDocs(qA);
       let rowsA = '';
@@ -689,7 +744,6 @@
         <tbody>${rowsA || '<tr><td colspan="3">Belum ada data.</td></tr>'}</tbody></table>
       `;
 
-      // 2. Data Nilai
       const qN = query(collection(db, "nilai"), where("id_siswa", "==", activeChild.id_siswa));
       const snapN = await getDocs(qN);
       let rowsN = '';
@@ -702,7 +756,6 @@
         <tbody>${rowsN || '<tr><td colspan="4">Belum ada data nilai.</td></tr>'}</tbody></table>
       `;
 
-      // 3. Data Catatan Perkembangan dari Guru
       const qC = query(collection(db, "catatan_guru"), where("id_siswa", "==", activeChild.id_siswa));
       const snapC = await getDocs(qC);
       let rowsC = '';
@@ -819,8 +872,6 @@
     };
 
     // === 3. MENU GURU LENGKAP ===
-
-    // --- ABSENSI ---
     async function renderGuruAbsensi() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Santri & Absensi...`;
@@ -979,7 +1030,6 @@
       }
     }
 
-    // --- MONITORING KEHADIRAN KELAS ---
     async function renderGuruMonitoring() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Kehadiran Kelas...`;
@@ -1588,7 +1638,7 @@
       const searchQuery = document.getElementById('searchCatatanInput')?.value.toLowerCase().trim();
 
       let filtered = window.rawCatatanListCache.filter(item => {
-        const matchSiswa = (selectedSiswa === 'ALL' || !selectedSiswa || item.id_siswa === selectedSsiswa);
+        const matchSiswa = (selectedSiswa === 'ALL' || !selectedSiswa || item.id_siswa === selectedSiswa);
         const matchText = !searchQuery || 
           item.nama_siswa.toLowerCase().includes(searchQuery) ||
           item.catatan.toLowerCase().includes(searchQuery);
@@ -1745,34 +1795,39 @@
       }
     };
 
-    // === 4. ADMIN & PENGALIHAN MENU INFAQ ===
+    // === 4. MENU ADMIN (Infaq, Users, Kelas, Moderasi dengan Filter, Live Search & CRUD) ===
+    
+    // --- 4.1 Kelola Infaq Santri (Admin) ---
     async function renderAdminInfaq() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Infaq...`;
 
       const snapS = await getDocs(collection(db, "siswa"));
       let siswaMap = {};
-      let options = '';
+      let optionsInput = '';
+      let optionsFilter = '<option value="ALL">-- Semua Santri --</option>';
       snapS.forEach(d => {
         const sData = d.data();
         siswaMap[d.id] = sData.nama_siswa;
-        options += `<option value="${d.id}">${sData.nama_siswa} (${sData.nis}) - Kelas: ${sData.id_kelas}</option>`;
+        optionsInput += `<option value="${d.id}">${sData.nama_siswa} (${sData.nis}) - Kelas: ${sData.id_kelas}</option>`;
+        optionsFilter += `<option value="${d.id}">${sData.nama_siswa} (${sData.nis})</option>`;
       });
 
       const snapI = await getDocs(collection(db, "infaq"));
+      let infaqList = [];
       let totalInfaq = 0;
-      let rowsInfaq = '';
-      let no = 1;
-
       snapI.forEach(d => {
         const item = d.data();
         totalInfaq += Number(item.jumlah) || 0;
-        rowsInfaq += `<tr><td class="text-center">${no++}</td><td>${siswaMap[item.id_siswa] || item.id_siswa}</td><td>${item.tanggal}</td><td class="text-end fw-bold">Rp ${(Number(item.jumlah)||0).toLocaleString('id-ID')}</td><td>${item.keterangan || '-'}</td></tr>`;
+        infaqList.push({ docId: d.id, ...item, nama_siswa: siswaMap[item.id_siswa] || 'Santri (Tidak ditemukan)' });
       });
+
+      infaqList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+      window.rawInfaqListCache = infaqList;
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-cash-coin text-success me-2"></i> Kelola Infaq Santri (Admin & Lembaga)</h5>
+          <h5><i class="bi bi-cash-coin text-success me-2"></i> Kelola Infaq Santri (Admin)</h5>
           <hr>
           <ul class="nav nav-tabs" id="adminInfaqNav">
             <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabInputInfaq">Input Infaq</a></li>
@@ -1782,7 +1837,7 @@
           <div class="tab-content pt-3">
             <div class="tab-pane fade show active" id="tabInputInfaq">
               <form onsubmit="submitAdminInfaq(event)">
-                <div class="mb-3"><label class="form-label fw-bold">Pilih Santri</label><select id="adminInfaqSiswa" class="form-select border-success">${options}</select></div>
+                <div class="mb-3"><label class="form-label fw-bold">Pilih Santri</label><select id="adminInfaqSiswa" class="form-select border-success">${optionsInput}</select></div>
                 <div class="mb-3"><label class="form-label fw-bold">Tanggal Transaksi</label><input type="date" id="adminInfaqTgl" class="form-control" value="${new Date().toISOString().split('T')[0]}" required></div>
                 <div class="mb-3"><label class="form-label fw-bold">Nominal Infaq (Rp)</label><input type="number" id="adminInfaqJumlah" class="form-control" required placeholder="25000"></div>
                 <div class="mb-3"><label class="form-label fw-bold">Keterangan</label><input type="text" id="adminInfaqKet" class="form-control" placeholder="Infaq bulanan"></div>
@@ -1795,17 +1850,68 @@
                 <div><strong>Total Infaq Terkumpul Seluruh Lembaga:</strong></div>
                 <h4 class="mb-0 fw-bold">Rp ${totalInfaq.toLocaleString('id-ID')}</h4>
               </div>
-              <table class="table table-sm table-bordered align-middle">
-                <thead class="table-success">
-                  <tr><th width="50" class="text-center">No</th><th>Nama Santri</th><th width="120">Tanggal</th><th class="text-end">Jumlah</th><th>Keterangan</th></tr>
-                </thead>
-                <tbody>${rowsInfaq || '<tr><td colspan="5" class="text-center">Belum ada transaksi infaq.</td></tr>'}</tbody>
-              </table>
+
+              <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+                <div class="col-md-5">
+                  <label class="form-label fw-bold mb-1">Filter Santri:</label>
+                  <select id="filterSiswaAdminInfaq" class="form-select border-success" onchange="filterAdminInfaqTable()">${optionsFilter}</select>
+                </div>
+                <div class="col-md-7">
+                  <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
+                  <input type="text" id="searchAdminInfaqInput" class="form-control border-success" placeholder="Cari keterangan / nominal..." onkeyup="filterAdminInfaqTable()">
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                  <thead class="table-success">
+                    <tr><th width="40" class="text-center">No</th><th>Nama Santri</th><th width="110" class="text-center">Tanggal</th><th class="text-end" width="130">Jumlah</th><th>Keterangan</th><th width="80" class="text-center">Aksi</th></tr>
+                  </thead>
+                  <tbody id="tblAdminInfaqBody"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       `;
+
+      filterAdminInfaqTable();
     }
+
+    window.filterAdminInfaqTable = function() {
+      const selectedSiswa = document.getElementById('filterSiswaAdminInfaq')?.value;
+      const searchQuery = document.getElementById('searchAdminInfaqInput')?.value.toLowerCase().trim();
+
+      let filtered = window.rawInfaqListCache.filter(item => {
+        const matchSiswa = (selectedSiswa === 'ALL' || !selectedSiswa || item.id_siswa === selectedSiswa);
+        const matchText = !searchQuery || 
+          item.nama_siswa.toLowerCase().includes(searchQuery) ||
+          item.jumlah.toString().includes(searchQuery) ||
+          (item.keterangan && item.keterangan.toLowerCase().includes(searchQuery));
+        return matchSiswa && matchText;
+      });
+
+      let rows = '';
+      let no = 1;
+      filtered.forEach(item => {
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><strong>${item.nama_siswa}</strong></td>
+            <td class="text-center">${item.tanggal}</td>
+            <td class="text-end">Rp ${(Number(item.jumlah)||0).toLocaleString('id-ID')}</td>
+            <td>${item.keterangan || '-'}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteAdminInfaq('${item.docId}')">
+                <i class="bi bi-trash"></i> Hapus
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tblAdminInfaqBody').innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">Data infaq tidak ditemukan.</td></tr>';
+    };
 
     window.submitAdminInfaq = async function(e) {
       e.preventDefault();
@@ -1824,25 +1930,46 @@
       }
     };
 
+    window.deleteAdminInfaq = async function(docId) {
+      if (confirm('Yakin ingin menghapus data infaq ini?')) {
+        try {
+          await deleteDoc(doc(db, "infaq", docId));
+          alert('Data infaq berhasil dihapus.');
+          renderAdminInfaq();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      }
+    };
+
+    // --- 4.2 Kelola User (Admin) [Kecuali Super Admin] ---
     async function renderAdminUsers() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Users...`;
 
       const snap = await getDocs(collection(db, "users"));
-      let rows = '';
+      let usersList = [];
       snap.forEach(d => {
         const u = d.data();
-        rows += `<tr><td>${u.username}</td><td>${u.nama}</td><td><span class="badge bg-secondary">${u.role}</span></td><td>${u.id_kelas || '-'}</td></tr>`;
+        // Dibatasi tidak bisa menampilkan atribut super admin
+        if (u.role !== 'superadmin') {
+          usersList.push({ docId: d.id, ...u });
+        }
       });
+
+      usersList.sort((a, b) => a.nama.localeCompare(b.nama));
+      window.rawUsersListCache = usersList;
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5>Tambah & Manajemen User</h5>
-          <form onsubmit="addUser(event)" class="row g-2 mb-4">
+          <h5><i class="bi bi-people text-success me-2"></i> Kelola User Pengguna</h5>
+          <hr>
+          <form onsubmit="addUser(event)" class="row g-2 mb-4 bg-light p-3 rounded border">
+            <h6 class="fw-bold text-success">Tambah User Baru</h6>
             <div class="col-md-2"><input type="text" id="newUsername" class="form-control" required placeholder="Username"></div>
             <div class="col-md-2"><input type="password" id="newPass" class="form-control" required placeholder="Password"></div>
             <div class="col-md-3"><input type="text" id="newNama" class="form-control" required placeholder="Nama Lengkap"></div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <select id="newRole" class="form-select">
                 <option value="guru">Guru</option>
                 <option value="walisiswa">Wali Siswa</option>
@@ -1850,16 +1977,78 @@
                 <option value="kepalasekolah">Kepala Sekolah</option>
               </select>
             </div>
-            <div class="col-md-2"><button type="submit" class="btn btn-success w-100">Tambah</button></div>
+            <div class="col-md-2"><input type="text" id="newKelas" class="form-control" placeholder="ID Kelas"></div>
+            <div class="col-md-1"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
           </form>
-          <h6>Daftar Pengguna Aktif</h6>
-          <table class="table table-sm table-bordered">
-            <thead class="table-light"><tr><th>Username</th><th>Nama</th><th>Role</th><th>Kelas</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
+
+          <h6 class="fw-bold text-success mb-3">Daftar Pengguna Aktif</h6>
+          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+            <div class="col-md-4">
+              <label class="form-label fw-bold mb-1">Filter Role:</label>
+              <select id="filterRoleUser" class="form-select border-success" onchange="filterUsersTable()">
+                <option value="ALL">-- Semua Role --</option>
+                <option value="guru">Guru</option>
+                <option value="walisiswa">Wali Siswa</option>
+                <option value="admin">Admin</option>
+                <option value="kepalasekolah">Kepala Sekolah</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
+              <input type="text" id="searchUsersInput" class="form-control border-success" placeholder="Cari nama atau username..." onkeyup="filterUsersTable()">
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th>Username</th><th>Nama Lengkap</th><th width="130">Role</th><th width="100">Kelas</th><th width="120" class="text-center">Aksi</th></tr>
+              </thead>
+              <tbody id="tblUsersBody"></tbody>
+            </table>
+          </div>
         </div>
       `;
+
+      filterUsersTable();
     }
+
+    window.filterUsersTable = function() {
+      const selectedRole = document.getElementById('filterRoleUser')?.value;
+      const searchQuery = document.getElementById('searchUsersInput')?.value.toLowerCase().trim();
+
+      let filtered = window.rawUsersListCache.filter(u => {
+        const matchRole = (selectedRole === 'ALL' || !selectedRole || u.role === selectedRole);
+        const matchText = !searchQuery || 
+          u.username.toLowerCase().includes(searchQuery) ||
+          u.nama.toLowerCase().includes(searchQuery);
+        return matchRole && matchText;
+      });
+
+      let rows = '';
+      let no = 1;
+      filtered.forEach(u => {
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><strong>${u.username}</strong></td>
+            <td>${u.nama}</td>
+            <td><span class="badge bg-secondary">${u.role}</span></td>
+            <td>${u.id_kelas || '-'}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditUser('${u.docId}', '${encodeURIComponent(u.username)}', '${encodeURIComponent(u.password)}', '${encodeURIComponent(u.nama)}', '${u.role}', '${encodeURIComponent(u.id_kelas || '')}')">
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteUser('${u.docId}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tblUsersBody').innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">User tidak ditemukan.</td></tr>';
+    };
 
     window.addUser = async function(e) {
       e.preventDefault();
@@ -1869,7 +2058,7 @@
           password: document.getElementById('newPass').value,
           nama: document.getElementById('newNama').value,
           role: document.getElementById('newRole').value,
-          id_kelas: ''
+          id_kelas: document.getElementById('newKelas').value || ''
         });
         alert('User berhasil ditambahkan!');
         renderAdminUsers();
@@ -1878,42 +2067,276 @@
       }
     };
 
-    function renderAdminKelas() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Manajemen Kelas & Penempatan Santri (Firestore Connected)</h5></div>`;
+    window.openModalEditUser = function(docId, u, p, n, r, k) {
+      document.getElementById('editUserDocId').value = docId;
+      document.getElementById('editUserUsername').value = decodeURIComponent(u);
+      document.getElementById('editUserPass').value = decodeURIComponent(p);
+      document.getElementById('editUserNama').value = decodeURIComponent(n);
+      document.getElementById('editUserRole').value = r;
+      document.getElementById('editUserKelas').value = decodeURIComponent(k);
+      new bootstrap.Modal(document.getElementById('editUserModal')).show();
+    };
+
+    window.submitUpdateUser = async function() {
+      const docId = document.getElementById('editUserDocId').value;
+      try {
+        await updateDoc(doc(db, "users", docId), {
+          username: document.getElementById('editUserUsername').value,
+          password: document.getElementById('editUserPass').value,
+          nama: document.getElementById('editUserNama').value,
+          role: document.getElementById('editUserRole').value,
+          id_kelas: document.getElementById('editUserKelas').value
+        });
+        alert('Data user berhasil diperbarui!');
+        bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+        renderAdminUsers();
+      } catch (err) {
+        alert('Gagal mengupdate user: ' + err.message);
+      }
+    };
+
+    window.deleteUser = async function(docId) {
+      if (confirm('Yakin ingin menghapus user ini?')) {
+        try {
+          await deleteDoc(doc(db, "users", docId));
+          alert('User berhasil dihapus.');
+          renderAdminUsers();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      }
+    };
+
+    // --- 4.3 Manajemen Kelas (Admin) ---
+    async function renderAdminKelas() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Kelas...`;
+
+      const snap = await getDocs(collection(db, "kelas"));
+      let kelasList = [];
+      snap.forEach(d => {
+        kelasList.push({ docId: d.id, ...d.data() });
+      });
+
+      if (kelasList.length === 0) {
+        // Buat default data kelas jika kosong agar tabel informatif
+        kelasList = [
+          { docId: 'KLS-01', id_kelas: 'KLS-01', nama_kelas: 'Kelas 1 TPQ', keterangan: 'Kelas Dasar' }
+        ];
+      }
+
+      kelasList.sort((a, b) => a.id_kelas.localeCompare(b.id_kelas));
+      window.rawKelasListCache = kelasList;
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-arrow-left-right text-success me-2"></i> Manajemen Kelas TPQ</h5>
+          <hr>
+          <form onsubmit="addKelas(event)" class="row g-2 mb-4 bg-light p-3 rounded border">
+            <h6 class="fw-bold text-success">Tambah Kelas Baru</h6>
+            <div class="col-md-3"><input type="text" id="newKelasId" class="form-control" required placeholder="ID Kelas (Contoh: KLS-02)"></div>
+            <div class="col-md-4"><input type="text" id="newKelasNama" class="form-control" required placeholder="Nama Kelas"></div>
+            <div class="col-md-4"><input type="text" id="newKelasKet" class="form-control" placeholder="Keterangan"></div>
+            <div class="col-md-1"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
+          </form>
+
+          <h6 class="fw-bold text-success mb-3">Daftar Kelas Aktif</h6>
+          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+            <div class="col-md-12">
+              <label class="form-label fw-bold mb-1">Pencarian Kelas:</label>
+              <input type="text" id="searchKelasInput" class="form-control border-success" placeholder="Cari ID atau nama kelas..." onkeyup="filterKelasTable()">
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th width="120">ID Kelas</th><th>Nama Kelas</th><th>Keterangan</th><th width="120" class="text-center">Aksi</th></tr>
+              </thead>
+              <tbody id="tblKelasBody"></tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      filterKelasTable();
     }
 
-    async function renderAdminModerasi() {
-      const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Masukan...`;
+    window.filterKelasTable = function() {
+      const searchQuery = document.getElementById('searchKelasInput')?.value.toLowerCase().trim();
 
-      const snap = await getDocs(collection(db, "masukan_wali"));
+      let filtered = window.rawKelasListCache.filter(k => {
+        return !searchQuery || 
+          k.id_kelas.toLowerCase().includes(searchQuery) ||
+          k.nama_kelas.toLowerCase().includes(searchQuery) ||
+          (k.keterangan && k.keterangan.toLowerCase().includes(searchQuery));
+      });
+
       let rows = '';
-      snap.forEach(d => {
-        const p = d.data();
+      let no = 1;
+      filtered.forEach(k => {
         rows += `
           <tr>
-            <td>${p.tanggal}</td>
-            <td>${p.subjek}</td>
-            <td>${p.pesan}</td>
-            <td><span class="badge bg-warning text-dark">${p.status}</span></td>
-            <td>
-              <button class="btn btn-sm btn-success me-1" onclick="modPesan('${d.id}', 'Approved')">Approve</button>
-              <button class="btn btn-sm btn-info" onclick="modPesan('${d.id}', 'Public')">Publish</button>
+            <td class="text-center">${no++}</td>
+            <td><strong>${k.id_kelas}</strong></td>
+            <td>${k.nama_kelas}</td>
+            <td>${k.keterangan || '-'}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditKelas('${k.docId}', '${encodeURIComponent(k.id_kelas)}', '${encodeURIComponent(k.nama_kelas)}', '${encodeURIComponent(k.keterangan || '')}')">
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteKelas('${k.docId}')">
+                <i class="bi bi-trash"></i>
+              </button>
             </td>
           </tr>
         `;
       });
 
+      document.getElementById('tblKelasBody').innerHTML = rows || '<tr><td colspan="5" class="text-center text-muted">Kelas tidak ditemukan.</td></tr>';
+    };
+
+    window.addKelas = async function(e) {
+      e.preventDefault();
+      const idK = document.getElementById('newKelasId').value;
+      try {
+        await setDoc(doc(db, "kelas", idK), {
+          id_kelas: idK,
+          nama_kelas: document.getElementById('newKelasNama').value,
+          keterangan: document.getElementById('newKelasKet').value
+        });
+        alert('Kelas berhasil ditambahkan!');
+        renderAdminKelas();
+      } catch (err) {
+        alert('Gagal menambah kelas: ' + err.message);
+      }
+    };
+
+    window.openModalEditKelas = function(docId, idK, namaK, ket) {
+      document.getElementById('editKelasDocId').value = docId;
+      document.getElementById('editKelasId').value = decodeURIComponent(idK);
+      document.getElementById('editKelasNama').value = decodeURIComponent(namaK);
+      document.getElementById('editKelasKet').value = decodeURIComponent(ket);
+      new bootstrap.Modal(document.getElementById('editKelasModal')).show();
+    };
+
+    window.submitUpdateKelas = async function() {
+      const docId = document.getElementById('editKelasDocId').value;
+      try {
+        await updateDoc(doc(db, "kelas", docId), {
+          id_kelas: document.getElementById('editKelasId').value,
+          nama_kelas: document.getElementById('editKelasNama').value,
+          keterangan: document.getElementById('editKelasKet').value
+        });
+        alert('Data kelas berhasil diperbarui!');
+        bootstrap.Modal.getInstance(document.getElementById('editKelasModal')).hide();
+        renderAdminKelas();
+      } catch (err) {
+        alert('Gagal mengupdate kelas: ' + err.message);
+      }
+    };
+
+    window.deleteKelas = async function(docId) {
+      if (confirm('Yakin ingin menghapus kelas ini?')) {
+        try {
+          await deleteDoc(doc(db, "kelas", docId));
+          alert('Kelas berhasil dihapus.');
+          renderAdminKelas();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      }
+    };
+
+    // --- 4.4 Moderasi Masukan (Admin) ---
+    async function renderAdminModerasi() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Masukan...`;
+
+      const snap = await getDocs(collection(db, "masukan_wali"));
+      let moderasiList = [];
+      snap.forEach(d => {
+        moderasiList.push({ docId: d.id, ...d.data() });
+      });
+
+      moderasiList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+      window.rawModerasiListCache = moderasiList;
+
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5>Moderasi Masukan & Pertanyaan Wali</h5>
-          <table class="table table-bordered align-middle mt-3">
-            <thead class="table-light"><tr><th>Tanggal</th><th>Subjek</th><th>Pesan</th><th>Status</th><th>Aksi</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="5">Belum ada masukan.</td></tr>'}</tbody>
-          </table>
+          <h5><i class="bi bi-shield-check text-success me-2"></i> Moderasi Masukan & Pertanyaan Wali</h5>
+          <hr>
+          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+            <div class="col-md-4">
+              <label class="form-label fw-bold mb-1">Filter Status:</label>
+              <select id="filterStatusModerasi" class="form-select border-success" onchange="filterModerasiTable()">
+                <option value="ALL">-- Semua Status --</option>
+                <option value="Pending">Pending</option>
+                <option value="Forwarded to Admin">Forwarded to Admin</option>
+                <option value="Approved">Approved</option>
+                <option value="Public">Public</option>
+                <option value="Private">Private</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-bold mb-1">Pencarian Langsung:</label>
+              <input type="text" id="searchModerasiInput" class="form-control border-success" placeholder="Cari subjek atau isi pesan..." onkeyup="filterModerasiTable()">
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th width="100">Tanggal</th><th>Subjek & Pesan</th><th width="140" class="text-center">Status</th><th width="160" class="text-center">Aksi Moderasi</th></tr>
+              </thead>
+              <tbody id="tblModerasiBody"></tbody>
+            </table>
+          </div>
         </div>
       `;
+
+      filterModerasiTable();
     }
+
+    window.filterModerasiTable = function() {
+      const selectedStatus = document.getElementById('filterStatusModerasi')?.value;
+      const searchQuery = document.getElementById('searchModerasiInput')?.value.toLowerCase().trim();
+
+      let filtered = window.rawModerasiListCache.filter(p => {
+        const matchStatus = (selectedStatus === 'ALL' || !selectedStatus || p.status === selectedStatus);
+        const matchText = !searchQuery || 
+          p.subjek.toLowerCase().includes(searchQuery) ||
+          p.pesan.toLowerCase().includes(searchQuery);
+        return matchStatus && matchText;
+      });
+
+      let rows = '';
+      let no = 1;
+      filtered.forEach(p => {
+        let statusBadge = '';
+        if (p.status === 'Pending') statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+        else if (p.status === 'Forwarded to Admin') statusBadge = '<span class="badge bg-info text-dark">Diteruskan Admin</span>';
+        else if (p.status === 'Approved') statusBadge = '<span class="badge bg-primary">Approved</span>';
+        else if (p.status === 'Public') statusBadge = '<span class="badge bg-success">Public</span>';
+        else statusBadge = `<span class="badge bg-secondary">${p.status}</span>`;
+
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td>${p.tanggal}</td>
+            <td><strong>${p.subjek}</strong><p class="mb-0 text-muted small">${p.pesan}</p></td>
+            <td class="text-center">${statusBadge}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-success p-1 px-2 me-1 mb-1" onclick="modPesan('${p.docId}', 'Approved')">Approve</button>
+              <button class="btn btn-sm btn-outline-info p-1 px-2 me-1 mb-1" onclick="modPesan('${p.docId}', 'Public')">Publish</button>
+              <button class="btn btn-sm btn-outline-danger p-1 px-2 mb-1" onclick="deleteModerasi('${p.docId}')"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tblModerasiBody').innerHTML = rows || '<tr><td colspan="5" class="text-center text-muted">Data moderasi tidak ditemukan.</td></tr>';
+    };
 
     window.modPesan = async function(id, status) {
       try {
@@ -1925,9 +2348,17 @@
       }
     };
 
-    function renderAdminSetoranApproval() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Approval Setoran Infaq Guru (Firestore Connected)</h5></div>`;
-    }
+    window.deleteModerasi = async function(docId) {
+      if (confirm('Yakin ingin menghapus masukan ini?')) {
+        try {
+          await deleteDoc(doc(db, "masukan_wali", docId));
+          alert('Masukan berhasil dihapus.');
+          renderAdminModerasi();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      }
+    };
 
     // === 5. KEPALA SEKOLAH FITUR ===
     async function renderKepalaReport() {
