@@ -310,6 +310,40 @@
     </div>
   </div>
 
+  <!-- MODAL EDIT TAHUN AJARAN -->
+  <div class="modal fade" id="editTahunAjaranModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-pencil-square me-2"></i>Edit Data Tahun Ajaran</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editTahunAjaranDocId">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Tahun Ajaran</label>
+            <input type="text" id="editTahunAjaranVal" class="form-control" required placeholder="Contoh: 2026/2027">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Semester</label>
+            <select id="editSemesterVal" class="form-select">
+              <option value="Ganjil">Ganjil</option>
+              <option value="Genap">Genap</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Keterangan</label>
+            <input type="text" id="editTahunAjaranKet" class="form-control" placeholder="Keterangan opsional">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="submitUpdateTahunAjaran()"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL PENCARIAN INTERAKTIF WALI SANTRI -->
   <div class="modal fade" id="waliSearchModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -419,6 +453,7 @@
     window.rawModerasiListCache = [];
     window.rawLogsListCache = [];
     window.rawWaliUsersCache = [];
+    window.rawTahunAjaranCache = [];
 
     // Helper: Ambil Data Kelas dari Database untuk Dropdown
     async function getKelasDropdownOptions(selectedVal = '', includeEmpty = false) {
@@ -469,6 +504,24 @@
         console.error("Gagal mencatat log:", e);
       }
     }
+
+    // Helper: Ambil Tahun Ajaran Aktif dari Database
+    async function getTahunAjaranAktif() {
+      try {
+        const q = query(collection(db, "tahun_ajaran"), where("is_active", "==", true));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          let activeData = null;
+          snap.forEach(d => { activeData = { docId: d.id, ...d.data() }; });
+          return activeData;
+        }
+        return null;
+      } catch (e) {
+        console.error("Gagal mengambil tahun ajaran aktif:", e);
+        return null;
+      }
+    }
+    window.getTahunAjaranAktif = getTahunAjaranAktif;
 
     // -------------------------------------------------------------
     // AUTHENTICATION & LOGIN
@@ -2020,7 +2073,7 @@
 
     // === 4. MENU ADMIN ===
     
-    // --- 4.1 Kelola Infaq Santri (Admin) [Dengan Filter Kelas] ---
+    // --- 4.1 Kelola Infaq Santri (Admin) ---
     async function renderAdminInfaq() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Infaq...`;
@@ -2187,7 +2240,7 @@
       }
     };
 
-    // --- 4.2 Master Data Santri (`adminSantri`) [Dengan Modal Pencarian Wali dari Tabel Users] ---
+    // --- 4.2 Master Data Santri (`adminSantri`) ---
     async function renderAdminSantri() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Santri...`;
@@ -2195,7 +2248,6 @@
       const kelasOptionsHtml = await getKelasDropdownOptions('', false);
       const kelasFilterOptions = await getKelasDropdownOptions('', true);
 
-      // Cache wali users untuk pencarian modal
       const qWali = query(collection(db, "users"), where("role", "==", "walisiswa"));
       const snapWali = await getDocs(qWali);
       let waliList = [];
@@ -2210,9 +2262,6 @@
 
       santriList.sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
       window.rawSantriListCache = santriList;
-
-      let waliMap = {};
-      waliList.forEach(w => { waliMap[w.id_user] = w.nama; });
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
@@ -2310,11 +2359,9 @@
       document.getElementById('tblSantriBody').innerHTML = rows || '<tr><td colspan="7" class="text-center text-muted">Data santri tidak ditemukan.</td></tr>';
     };
 
-    // Fungsi Modal Pencarian Wali Interaktif
     window.openWaliSearchModal = async function(mode) {
       document.getElementById('targetFormWaliMode').value = mode;
       
-      // Pastikan cache wali terisi
       if (!window.rawWaliUsersCache || window.rawWaliUsersCache.length === 0) {
         const qWali = query(collection(db, "users"), where("role", "==", "walisiswa"));
         const snapWali = await getDocs(qWali);
@@ -2901,44 +2948,265 @@
       }
     };
 
-    // --- 4.7 Tahun Ajaran & Semester (`adminTahunAjaran`) ---
+    // --- 4.7 Tahun Ajaran & Semester (`adminTahunAjaran`) [DATABASE INTEGRATION & SINGLE ACTIVE NAV-TAB] ---
     async function renderAdminTahunAjaran() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="card card-dashboard p-4">
-        <h5><i class="bi bi-calendar3 text-success me-2"></i> Manajemen Tahun Ajaran & Semester</h5>
-        <hr>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <div class="p-3 bg-light rounded border">
-              <h6 class="fw-bold text-success">Status Tahun Ajaran Aktif</h6>
-              <p class="mb-2 text-muted small">Tahun ajaran saat ini digunakan untuk pembukuan absensi, nilai, dan rekapitulasi.</p>
-              <div class="mb-3">
-                <label class="form-label fw-bold">Tahun Ajaran:</label>
-                <select id="selectTahunAjaran" class="form-select border-success">
-                  <option value="2025/2026">2025 / 2026</option>
-                  <option value="2026/2027" selected>2026 / 2027</option>
-                  <option value="2027/2028">2027 / 2028</option>
-                </select>
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Database Tahun Ajaran...`;
+
+      // Ambil data dari koleksi database `tahun_ajaran`
+      const snap = await getDocs(collection(db, "tahun_ajaran"));
+      let listTA = [];
+      snap.forEach(d => {
+        listTA.push({ docId: d.id, ...d.data() });
+      });
+
+      // Otomatisasi: Jika database belum berisikan data awal, buatkan default record otomatis
+      if (listTA.length === 0) {
+        try {
+          const docRef1 = await addDoc(collection(db, "tahun_ajaran"), {
+            tahun_ajaran: "2025/2026",
+            semester: "Genap",
+            is_active: false,
+            keterangan: "Tahun ajaran lampau",
+            created_at: new Date()
+          });
+          const docRef2 = await addDoc(collection(db, "tahun_ajaran"), {
+            tahun_ajaran: "2026/2027",
+            semester: "Ganjil",
+            is_active: true,
+            keterangan: "Tahun ajaran berjalan",
+            created_at: new Date()
+          });
+          listTA = [
+            { docId: docRef1.id, tahun_ajaran: "2025/2026", semester: "Genap", is_active: false, keterangan: "Tahun ajaran lampau" },
+            { docId: docRef2.id, tahun_ajaran: "2026/2027", semester: "Ganjil", is_active: true, keterangan: "Tahun ajaran berjalan" }
+          ];
+        } catch (e) {
+          console.error("Gagal auto-seed database tahun_ajaran:", e);
+        }
+      }
+
+      listTA.sort((a, b) => b.tahun_ajaran.localeCompare(a.tahun_ajaran));
+      window.rawTahunAjaranCache = listTA;
+
+      // Cari tahun ajaran yang aktif saat ini
+      const activeItem = listTA.find(item => item.is_active === true) || listTA[0];
+
+      let optionsSelectActive = listTA.map(item => `
+        <option value="${item.docId}" ${item.is_active ? 'selected' : ''}>
+          ${item.tahun_ajaran} - Semester ${item.semester} ${item.is_active ? '(Aktif Saat Ini)' : ''}
+        </option>
+      `).join('');
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-calendar3 text-success me-2"></i> Manajemen Tahun Ajaran & Semester</h5>
+          <hr>
+          
+          <ul class="nav nav-tabs" id="tahunAjaranNav">
+            <li class="nav-item">
+              <a class="nav-link active" data-bs-toggle="tab" href="#tabSetActiveTA">
+                <i class="bi bi-check-circle me-1"></i> Set Tahun Ajaran Aktif
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab" href="#tabMasterTA">
+                <i class="bi bi-database-gear me-1"></i> Kelola Master Tahun Ajaran (Database)
+              </a>
+            </li>
+          </ul>
+
+          <div class="tab-content pt-3">
+            <!-- NAV TAB 1: SET TAHUN AJARAN AKTIF (HANYA 1 YANG AKTIF) -->
+            <div class="tab-pane fade show active" id="tabSetActiveTA">
+              <div class="row g-3">
+                <div class="col-md-7">
+                  <div class="p-4 bg-light rounded border border-success">
+                    <h6 class="fw-bold text-success mb-2"><i class="bi bi-flag-fill me-1"></i> Status Tahun Ajaran Aktif Lembaga</h6>
+                    <p class="text-muted small">Pilih tahun ajaran dari database yang akan diaktifkan. Sistem menjamin <strong>hanya ada 1 tahun ajaran yang aktif</strong> secara global untuk seluruh transaksi absensi & nilai.</p>
+                    
+                    <div class="alert alert-success d-flex align-items-center mb-3">
+                      <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+                      <div>
+                        <div class="small fw-bold">Tahun Ajaran Aktif Sekarang:</div>
+                        <h5 class="mb-0 fw-bold">${activeItem ? `${activeItem.tahun_ajaran} (Semester${activeItem.semester})` : 'Belum Ditentukan'}</h5>
+                      </div>
+                    </div>
+
+                    <form onsubmit="submitSetTahunAjaranAktif(event)">
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">Pilih Tahun Ajaran dari Database:</label>
+                        <select id="selectTAAktifDocId" class="form-select border-success fw-bold">
+                          ${optionsSelectActive}
+                        </select>
+                      </div>
+                      <button type="submit" class="btn btn-success px-4"><i class="bi bi-save me-1"></i> Simpan & Aktifkan Tahun Ajaran</button>
+                    </form>
+                  </div>
+                </div>
               </div>
-              <div class="mb-3">
-                <label class="form-label fw-bold">Semester:</label>
-                <select id="selectSemester" class="form-select border-success">
-                  <option value="Ganjil">Semester Ganjil</option>
-                  <option value="Genap" selected>Semester Genap</option>
-                </select>
+            </div>
+
+            <!-- NAV TAB 2: KELOLA MASTER TAHUN AJARAN (INPUT & CRUD DATABASE) -->
+            <div class="tab-pane fade" id="tabMasterTA">
+              <form onsubmit="addTahunAjaran(event)" class="row g-2 mb-4 bg-light p-3 rounded border">
+                <h6 class="fw-bold text-success"><i class="bi bi-plus-circle me-1"></i> Tambah Data Tahun Ajaran Baru ke Database</h6>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold small">Tahun Ajaran</label>
+                  <input type="text" id="newTahunAjaranVal" class="form-control" required placeholder="Contoh: 2027/2028">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold small">Semester</label>
+                  <select id="newSemesterVal" class="form-select">
+                    <option value="Ganjil">Ganjil</option>
+                    <option value="Genap">Genap</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold small">Keterangan</label>
+                  <input type="text" id="newTahunAjaranKet" class="form-control" placeholder="Keterangan opsional">
+                </div>
+                <div class="col-md-2 align-self-end">
+                  <button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg me-1"></i> Tambah</button>
+                </div>
+              </form>
+
+              <h6 class="fw-bold text-success mb-3">Daftar Database Tahun Ajaran</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                  <thead class="table-success">
+                    <tr>
+                      <th width="40" class="text-center">No</th>
+                      <th width="160">Tahun Ajaran</th>
+                      <th width="120" class="text-center">Semester</th>
+                      <th width="130" class="text-center">Status Aktif</th>
+                      <th>Keterangan</th>
+                      <th width="120" class="text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tblTahunAjaranBody"></tbody>
+                </table>
               </div>
-              <button class="btn btn-success" onclick="saveTahunAjaran()"><i class="bi bi-save me-1"></i> Simpan Konfigurasi</button>
             </div>
           </div>
         </div>
-      </div>`;
+      `;
+
+      renderTahunAjaranTable();
     }
 
-    window.saveTahunAjaran = async function() {
-      const ta = document.getElementById('selectTahunAjaran').value;
-      const sm = document.getElementById('selectSemester').value;
-      await logSystemActivity(`Admin mengubah tahun ajaran ke ${ta} (${sm})`);
-      alert(`Tahun ajaran berhasil diatur ke ${ta} - Semester ${sm}!`);
+    function renderTahunAjaranTable() {
+      let rows = '';
+      let no = 1;
+      window.rawTahunAjaranCache.forEach(item => {
+        const statusBadge = item.is_active ? 
+          '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>AKTIF</span>' : 
+          '<span class="badge bg-secondary">Non-Aktif</span>';
+
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><strong>${item.tahun_ajaran}</strong></td>
+            <td class="text-center">${item.semester}</td>
+            <td class="text-center">${statusBadge}</td>
+            <td>${item.keterangan || '-'}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openModalEditTahunAjaran('${item.docId}', '${encodeURIComponent(item.tahun_ajaran)}', '${item.semester}', '${encodeURIComponent(item.keterangan || '')}')">
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteTahunAjaran('${item.docId}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      const tbody = document.getElementById('tblTahunAjaranBody');
+      if (tbody) {
+        tbody.innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">Belum ada data tahun ajaran di database.</td></tr>';
+      }
+    }
+
+    window.submitSetTahunAjaranAktif = async function(e) {
+      e.preventDefault();
+      const selectedDocId = document.getElementById('selectTAAktifDocId').value;
+      if (!selectedDocId) return;
+
+      try {
+        // Nonaktifkan semua record tahun ajaran di database
+        const snap = await getDocs(collection(db, "tahun_ajaran"));
+        const promises = [];
+        snap.forEach(d => {
+          promises.push(updateDoc(doc(db, "tahun_ajaran", d.id), { is_active: false }));
+        });
+        await Promise.all(promises);
+
+        // Aktifkan hanya 1 tahun ajaran yang dipilih
+        await updateDoc(doc(db, "tahun_ajaran", selectedDocId), { is_active: true });
+
+        await logSystemActivity(`Admin mengaktifkan Tahun Ajaran ID ${selectedDocId}`);
+        alert('Tahun ajaran aktif berhasil diperbarui!');
+        renderAdminTahunAjaran();
+      } catch (err) {
+        alert('Gagal mengaktifkan tahun ajaran: ' + err.message);
+      }
+    };
+
+    window.addTahunAjaran = async function(e) {
+      e.preventDefault();
+      try {
+        await addDoc(collection(db, "tahun_ajaran"), {
+          tahun_ajaran: document.getElementById('newTahunAjaranVal').value,
+          semester: document.getElementById('newSemesterVal').value,
+          is_active: false,
+          keterangan: document.getElementById('newTahunAjaranKet').value,
+          created_at: new Date()
+        });
+        await logSystemActivity(`Admin menambah data tahun ajaran baru: ${document.getElementById('newTahunAjaranVal').value}`);
+        alert('Tahun ajaran berhasil ditambahkan ke database!');
+        renderAdminTahunAjaran();
+      } catch (err) {
+        alert('Gagal menambah tahun ajaran: ' + err.message);
+      }
+    };
+
+    window.openModalEditTahunAjaran = function(docId, ta, sem, ket) {
+      document.getElementById('editTahunAjaranDocId').value = docId;
+      document.getElementById('editTahunAjaranVal').value = decodeURIComponent(ta);
+      document.getElementById('editSemesterVal').value = sem;
+      document.getElementById('editTahunAjaranKet').value = decodeURIComponent(ket);
+      new bootstrap.Modal(document.getElementById('editTahunAjaranModal')).show();
+    };
+
+    window.submitUpdateTahunAjaran = async function() {
+      const docId = document.getElementById('editTahunAjaranDocId').value;
+      try {
+        await updateDoc(doc(db, "tahun_ajaran", docId), {
+          tahun_ajaran: document.getElementById('editTahunAjaranVal').value,
+          semester: document.getElementById('editSemesterVal').value,
+          keterangan: document.getElementById('editTahunAjaranKet').value
+        });
+        await logSystemActivity(`Admin memperbarui data tahun ajaran ID ${docId}`);
+        alert('Data tahun ajaran berhasil diperbarui!');
+        bootstrap.Modal.getInstance(document.getElementById('editTahunAjaranModal')).hide();
+        renderAdminTahunAjaran();
+      } catch (err) {
+        alert('Gagal memperbarui tahun ajaran: ' + err.message);
+      }
+    };
+
+    window.deleteTahunAjaran = async function(docId) {
+      if (confirm('Yakin ingin menghapus data tahun ajaran ini dari database?')) {
+        try {
+          await deleteDoc(doc(db, "tahun_ajaran", docId));
+          await logSystemActivity(`Admin menghapus tahun ajaran ID ${docId}`);
+          alert('Data tahun ajaran berhasil dihapus.');
+          renderAdminTahunAjaran();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      }
     };
 
     // --- 4.8 Moderasi Masukan (Admin) ---
@@ -3022,7 +3290,7 @@
             <td class="text-center">
               <button class="btn btn-sm btn-outline-success p-1 px-2 me-1 mb-1" onclick="modPesan('${p.docId}', 'Approved')">Approve</button>
               <button class="btn btn-sm btn-outline-info p-1 px-2 me-1 mb-1" onclick="modPesan('${p.docId}', 'Public')">Publish</button>
-              <button class="btn btn-sm btn-outline-danger p-1 px-2 mb-1" onclick="deleteModerasi('${p.docId}')"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-outline-danger p-1 px-2 me-1 mb-1" onclick="deleteModerasi('${p.docId}')"><i class="bi bi-trash"></i></button>
             </td>
           </tr>
         `;
