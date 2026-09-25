@@ -3136,7 +3136,7 @@
     }
 
 
-    // === 6. SUPER ADMIN: KELOLA DATABASE (DENGAN DROPDOWN RELASIONAL AKURAT UNTUK TAMBAH & EDIT) ===
+    // === 6. SUPER ADMIN: KELOLA DATABASE (DENGAN URUTAN KOLOM KONSISTEN & DROPDOWN RELASIONAL) ===
     async function renderSuperAdminDB(specificTable = 'siswa') {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Kelola Database (${specificTable})...`;
@@ -3200,7 +3200,17 @@
           if (k !== 'docId') allKeysSet.add(k);
         });
       });
-      let allKeys = Array.from(allKeysSet);
+      
+      // Mengurutkan kolom secara konsisten dengan memprioritaskan field penting di depan
+      let allKeys = Array.from(allKeysSet).sort((a, b) => {
+        const priority = ['nis', 'nama_siswa', 'nama', 'username', 'role', 'id_kelas', 'tanggal', 'jumlah', 'status', 'keterangan'];
+        let idxA = priority.indexOf(a);
+        let idxB = priority.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.localeCompare(b);
+      });
 
       let headersHtml = `<th width="40" class="text-center">No</th><th width="160">Document ID</th>`;
       allKeys.forEach(k => { headersHtml += `<th>${k}</th>`; });
