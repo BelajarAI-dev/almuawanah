@@ -666,14 +666,17 @@
           <ul class="nav nav-tabs" id="monTab">
             <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabAbsen">Kehadiran</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabNilai">Nilai Harian</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabCatatan">Catatan Guru</a></li>
           </ul>
           <div class="tab-content pt-3">
             <div class="tab-pane fade show active" id="tabAbsen"><div id="listAbsenWali">Memuat...</div></div>
             <div class="tab-pane fade" id="tabNilai"><div id="listNilaiWali">Memuat...</div></div>
+            <div class="tab-pane fade" id="tabCatatan"><div id="listCatatanWali">Memuat...</div></div>
           </div>
         </div>
       `;
 
+      // 1. Data Absensi
       const qA = query(collection(db, "absensi"), where("id_siswa", "==", activeChild.id_siswa));
       const snapA = await getDocs(qA);
       let rowsA = '';
@@ -686,6 +689,7 @@
         <tbody>${rowsA || '<tr><td colspan="3">Belum ada data.</td></tr>'}</tbody></table>
       `;
 
+      // 2. Data Nilai
       const qN = query(collection(db, "nilai"), where("id_siswa", "==", activeChild.id_siswa));
       const snapN = await getDocs(qN);
       let rowsN = '';
@@ -696,6 +700,22 @@
       document.getElementById('listNilaiWali').innerHTML = `
         <table class="table table-sm table-bordered"><thead><tr><th>Tanggal</th><th>Materi</th><th>Nilai</th><th>Catatan</th></tr></thead>
         <tbody>${rowsN || '<tr><td colspan="4">Belum ada data nilai.</td></tr>'}</tbody></table>
+      `;
+
+      // 3. Data Catatan Perkembangan dari Guru
+      const qC = query(collection(db, "catatan_guru"), where("id_siswa", "==", activeChild.id_siswa));
+      const snapC = await getDocs(qC);
+      let rowsC = '';
+      let noC = 1;
+      snapC.forEach(d => {
+        const c = d.data();
+        rowsC += `<tr><td class="text-center">${noC++}</td><td width="120">${c.tanggal}</td><td>${c.catatan}</td></tr>`;
+      });
+      document.getElementById('listCatatanWali').innerHTML = `
+        <table class="table table-sm table-bordered align-middle">
+          <thead class="table-success"><tr><th width="40" class="text-center">No</th><th>Tanggal</th><th>Catatan / Perkembangan dari Guru</th></tr></thead>
+          <tbody>${rowsC || '<tr><td colspan="3" class="text-center text-muted">Belum ada catatan perkembangan dari guru.</td></tr>'}</tbody>
+        </table>
       `;
     }
 
@@ -1366,7 +1386,6 @@
         }
       });
 
-      // Urutkan data berdasarkan tanggal/waktu terbaru (paling atas)
       nilaiList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
       window.rawNilaiListCache = nilaiList;
 
@@ -1569,7 +1588,7 @@
       const searchQuery = document.getElementById('searchCatatanInput')?.value.toLowerCase().trim();
 
       let filtered = window.rawCatatanListCache.filter(item => {
-        const matchSiswa = (selectedSiswa === 'ALL' || !selectedSiswa || item.id_siswa === selectedSiswa);
+        const matchSiswa = (selectedSiswa === 'ALL' || !selectedSiswa || item.id_siswa === selectedSsiswa);
         const matchText = !searchQuery || 
           item.nama_siswa.toLowerCase().includes(searchQuery) ||
           item.catatan.toLowerCase().includes(searchQuery);
