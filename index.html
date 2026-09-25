@@ -3136,7 +3136,7 @@
     }
 
 
-    // === 6. SUPER ADMIN: KELOLA DATABASE (DENGAN URUTAN KOLOM KONSISTEN & DROPDOWN RELASIONAL) ===
+    // === 6. SUPER ADMIN: KELOLA DATABASE (DENGAN URUTAN KOLOM KONSISTEN & STABIL) ===
     async function renderSuperAdminDB(specificTable = 'siswa') {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Kelola Database (${specificTable})...`;
@@ -3201,9 +3201,12 @@
         });
       });
       
-      // Mengurutkan kolom secara konsisten dengan memprioritaskan field penting di depan
+      // Mengurutkan kunci kolom secara konsisten dan terstruktur mutlak
       let allKeys = Array.from(allKeysSet).sort((a, b) => {
-        const priority = ['nis', 'nama_siswa', 'nama', 'username', 'role', 'id_kelas', 'tanggal', 'jumlah', 'status', 'keterangan'];
+        const priority = [
+          'nis', 'nama_siswa', 'nama', 'username', 'role', 'id_kelas', 'kelas', 
+          'tanggal', 'jumlah', 'materi', 'nilai', 'subjek', 'pesan', 'status', 'keterangan'
+        ];
         let idxA = priority.indexOf(a);
         let idxB = priority.indexOf(b);
         if (idxA !== -1 && idxB !== -1) return idxA - idxB;
