@@ -136,30 +136,25 @@
 
   <!-- Firebase SDK Modules -->
   <script type="module">
-      // Import the functions you need from the SDKs you need
-     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
       getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-      // TODO: Add SDKs for Firebase products that you want to use
-      // https://firebase.google.com/docs/web/setup#available-libraries
 
-      // Your web app's Firebase configuration
-      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-      const firebaseConfig = {
-        apiKey: "AIzaSyBm560355ego5BrjjpIFQXHOEWRbNeRo5o",
-        authDomain: "almuawanah-3b4a3.firebaseapp.com",
-        databaseURL: "https://almuawanah-3b4a3-default-rtdb.firebaseio.com",
-        projectId: "almuawanah-3b4a3",
-        storageBucket: "almuawanah-3b4a3.firebasestorage.app",
-        messagingSenderId: "170719829089",
-        appId: "1:170719829089:web:0e556b38be81cb0b84de20",
-        measurementId: "G-8KT9K9EP52"
-      };
+    // -------------------------------------------------------------
+    // 1. ISIKAN CONFIG FIREBASE ANDA DI SINI
+    // -------------------------------------------------------------
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const analytics = getAnalytics(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
     // Global State App
     window.db = db;
