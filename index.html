@@ -467,7 +467,7 @@
     </div>
   </div>
 
-  <!-- MODAL TAMBAH & EDIT RECORD DATABASE (SUPER ADMIN) -->
+  <!-- MODAL TAMBAH & EDIT RECORD DATABASE (SUPER ADMIN DENGAN DROPDOWN RELASIONAL) -->
   <div class="modal fade" id="dbRecordModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
@@ -3170,7 +3170,7 @@
     }
 
 
-    // === 6. SUPER ADMIN: KELOLA DATABASE (TABEL & MODAL EDIT FORM YANG AKURAT) ===
+    // === 6. SUPER ADMIN: KELOLA DATABASE (DENGAN DROPDOWN RELASIONAL UNTUK SEMUA ID) ===
     async function renderSuperAdminDB(specificTable = 'siswa') {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Kelola Database (${specificTable})...`;
@@ -3228,7 +3228,6 @@
 
       const paginated = paginateArray(filtered, 'dbManager');
 
-      // Mengumpulkan SEMUA unique keys dari seluruh dokumen agar header & isian sinkron akurat
       let allKeysSet = new Set();
       dataList.forEach(item => {
         Object.keys(item).forEach(k => {
@@ -3273,7 +3272,43 @@
       document.getElementById('paginationDBManager').innerHTML = renderPaginationControls('dbManager', filtered.length, filterDatabaseTable);
     };
 
-    window.openAddDBRecordModal = function(colName) {
+    // Fungsi pembantu untuk membuat opsi dropdown relasional database
+    async function getWaliDropdownOptions(selectedVal = '') {
+      try {
+        const qWali = query(collection(db, "users"), where("role", "==", "walisiswa"));
+        const snap = await getDocs(qWali);
+        let options = '<option value="">-- Pilih Wali Santri (Database Wali) --</option>';
+        snap.forEach(d => {
+          const data = d.data();
+          let idVal = d.id;
+          let label = data.nama || data.username;
+          let isSelected = (idVal === selectedVal || data.id_user === selectedVal) ? 'selected' : '';
+          options += `<option value="${idVal}" ${isSelected}>${label} (${idVal})</option>`;
+        });
+        return options;
+      } catch (e) {
+        return '<option value="">-- Gagal Memuat Data Wali --</option>';
+      }
+    }
+
+    async function getCollectionDropdownOptions(targetCol, selectedVal = '') {
+      try {
+        const snap = await getDocs(collection(db, targetCol));
+        let options = `<option value="">-- Pilih dari Tabel ${targetCol} --</option>`;
+        snap.forEach(d => {
+          const data = d.data();
+          let idVal = d.id;
+          let label = data.nama_siswa || data.nama || data.nama_kelas || data.tahun_ajaran || idVal;
+          let isSelected = (idVal === selectedVal) ? 'selected' : '';
+          options += `<option value="${idVal}" ${isSelected}>${label} (${idVal})</option>`;
+        });
+        return options;
+      } catch (e) {
+        return '<option value="">-- Gagal Memuat --</option>';
+      }
+    }
+
+    window.openAddDBRecordModal = async function(colName) {
       document.getElementById('dbModalMode').value = 'add';
       document.getElementById('dbModalCollection').value = colName;
       document.getElementById('dbModalDocId').value = '';
@@ -3288,11 +3323,11 @@
         sampleItem = { nama: '', keterangan: '' };
       }
 
-      renderDBModalFields(sampleItem);
+      await renderDBModalFields(sampleItem);
       new bootstrap.Modal(document.getElementById('dbRecordModal')).show();
     };
 
-    window.openEditDBRecordModal = function(docId) {
+    window.openEditDBRecordModal = async function(docId) {
       const colName = window.currentSelectedCollection;
       const itemObj = (window.rawDBCollectionCache || []).find(i => i.docId === docId);
       if (!itemObj) return;
@@ -3304,22 +3339,56 @@
 
       let cleanObj = { ...itemObj };
       delete cleanObj.docId;
-      renderDBModalFields(cleanObj);
+      await renderDBModalFields(cleanObj);
       new bootstrap.Modal(document.getElementById('dbRecordModal')).show();
     };
 
-    function renderDBModalFields(obj) {
+    async function renderDBModalFields(obj) {
       let html = '';
-      Object.keys(obj).forEach(k => {
+      for (let k of Object.keys(obj)) {
         let val = obj[k] !== undefined && obj[k] !== null ? obj[k] : '';
         if (typeof val === 'object') val = JSON.stringify(val);
-        html += `
-          <div class="col-md-6">
-            <label class="form-label fw-bold small text-secondary">${k}</label>
-            <input type="text" class="form-control form-control-sm db-field-input" data-key="${k}" value="${val}">
-          </div>
-        `;
-      });
+
+        // Jika field berkaitan dengan id_wali / wali, gunakan dropdown database users role walisiswa terkonfirmasi
+        if (k === 'id_wali' || k.includes('wali')) {
+          let waliOptions = await getWaliDropdownOptions(val);
+          html += `
+            <div class="col-md-6">
+              <label class="form-label fw-bold small text-success">${k} <span class="badge bg-success">Dropdown Database Wali</span></label>
+              <select class="form-select form-select-sm db-field-input border-success fw-bold" data-key="${k}">
+                ${waliOptions}
+              </select>
+            </div>
+          `;
+        } else if (k === 'id_siswa' || k === 'siswa_id') {
+          let siswaOptions = await getCollectionDropdownOptions('siswa', val);
+          html += `
+            <div class="col-md-6">
+              <label class="form-label fw-bold small text-success">${k} <span class="badge bg-success">Dropdown Database Santri</span></label>
+              <select class="form-select form-select-sm db-field-input border-success fw-bold" data-key="${k}">
+                ${siswaOptions}
+              </select>
+            </div>
+          `;
+        } else if (k === 'id_kelas' || k === 'kelas') {
+          let kelasOptions = await getCollectionDropdownOptions('kelas', val);
+          html += `
+            <div class="col-md-6">
+              <label class="form-label fw-bold small text-success">${k} <span class="badge bg-success">Dropdown Database Kelas</span></label>
+              <select class="form-select form-select-sm db-field-input border-success fw-bold" data-key="${k}">
+                ${kelasOptions}
+              </select>
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="col-md-6">
+              <label class="form-label fw-bold small text-secondary">${k}</label>
+              <input type="text" class="form-control form-control-sm db-field-input" data-key="${k}" value="${val}">
+            </div>
+          `;
+        }
+      }
       document.getElementById('dbModalFormFields').innerHTML = html || '<div class="text-muted">Tidak ada field.</div>';
     }
 
