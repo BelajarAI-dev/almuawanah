@@ -334,40 +334,6 @@
     </div>
   </div>
 
-  <!-- MODAL EDIT TAHUN AJARAN -->
-  <div class="modal fade" id="editTahunAjaranModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-pencil-square me-2"></i>Edit Data Tahun Ajaran</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="editTahunAjaranDocId">
-          <div class="mb-3">
-            <label class="form-label fw-bold">Tahun Ajaran</label>
-            <input type="text" id="editTahunAjaranVal" class="form-control" required placeholder="Contoh: 2026/2027">
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Semester</label>
-            <select id="editSemesterVal" class="form-select">
-              <option value="Ganjil">Ganjil</option>
-              <option value="Genap">Genap</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Keterangan</label>
-            <input type="text" id="editTahunAjaranKet" class="form-control" placeholder="Keterangan opsional">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-          <button type="button" class="btn btn-success btn-sm" onclick="submitUpdateTahunAjaran()"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL PENCARIAN INTERAKTIF WALI SANTRI -->
   <div class="modal fade" id="waliSearchModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -431,37 +397,6 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
           <button type="button" class="btn btn-success btn-sm" onclick="processConflictResolution()"><i class="bi bi-check-circle me-1"></i>Proses Pilihan</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL KENAIKAN KELAS SANTRI OLEH KEPALA SEKOLAH / SUPER ADMIN -->
-  <div class="modal fade" id="naikKelasModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-arrow-up-right-circle me-2"></i>Update / Kenaikan Kelas Santri</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="naikKelasSantriDocId">
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-bold">Nama Santri & NIS:</label>
-            <div id="modalSantriInfoPreview" class="fw-bold text-success fs-6"></div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label text-muted small fw-bold">Kelas Saat Ini:</label>
-            <div id="modalKelasLamaPreview" class="badge bg-secondary p-2 fs-6"></div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Pilih Kelas Tujuan Baru:</label>
-            <select id="modalKelasBaruSelect" class="form-select border-success"></select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-          <button type="button" class="btn btn-success btn-sm" onclick="submitKenaikanKelasSantri()"><i class="bi bi-save me-1"></i>Simpan Perubahan Kelas</button>
         </div>
       </div>
     </div>
@@ -3129,26 +3064,57 @@
       `;
     }
 
+    // --- AUDIT LOG AKTIVITAS (DENGAN PAGINATION) ---
     async function renderAdminLogs() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Log...`;
       const snap = await getDocs(collection(db, "system_logs"));
-      let rows = '';
-      let no = 1;
-      snap.forEach(d => {
-        const l = d.data();
-        rows += `<tr><td class="text-center">${no++}</td><td><small>${new Date(l.tanggal).toLocaleString('id-ID')}</small></td><td><strong>${l.user}</strong></td><td><span class="badge bg-secondary">${l.role}</span></td><td>${l.aktivitas}</td></tr>`;
-      });
+      let logsList = [];
+      snap.forEach(d => logsList.push({ docId: d.id, ...d.data() }));
+      logsList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+      window.rawLogsListCache = logsList;
+
       main.innerHTML = `
         <div class="card card-dashboard p-4">
           <h5><i class="bi bi-clock-history text-success me-2"></i> Audit Log Aktivitas Sistem</h5>
-          <table class="table table-sm table-bordered align-middle mt-3">
-            <thead class="table-success"><tr><th width="40" class="text-center">No</th><th width="160">Waktu</th><th width="150">Pengguna</th><th width="100">Role</th><th>Aktivitas</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="5" class="text-center">Tidak ada log.</td></tr>'}</tbody>
-          </table>
+          <hr>
+          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+            <div class="col-md-12">
+              <label class="form-label fw-bold mb-1">Pencarian Log Aktivitas / Pengguna:</label>
+              <input type="text" id="searchLogsInput" class="form-control border-success" placeholder="Ketik kata kunci log..." onkeyup="filterLogsTable()">
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-success"><tr><th width="40" class="text-center">No</th><th width="160">Waktu</th><th width="150">Pengguna</th><th width="100">Role</th><th>Aktivitas</th></tr></thead>
+              <tbody id="tblLogsBody"></tbody>
+            </table>
+          </div>
+          <div id="paginationLogs"></div>
         </div>
       `;
+      filterLogsTable();
     }
+
+    window.filterLogsTable = function() {
+      const searchQuery = document.getElementById('searchLogsInput')?.value.toLowerCase().trim();
+      let filtered = (window.rawLogsListCache || []).filter(l => {
+        if (!searchQuery) return true;
+        return (l.user && l.user.toLowerCase().includes(searchQuery)) ||
+               (l.aktivitas && l.aktivitas.toLowerCase().includes(searchQuery)) ||
+               (l.role && l.role.toLowerCase().includes(searchQuery));
+      });
+
+      const paginated = paginateArray(filtered, 'logs');
+      let rows = '';
+      let no = (window.paginationState.logs.page - 1) * window.paginationState.logs.limit + 1;
+
+      paginated.forEach(l => {
+        rows += `<tr><td class="text-center">${no++}</td><td><small>${new Date(l.tanggal).toLocaleString('id-ID')}</small></td><td><strong>${l.user}</strong></td><td><span class="badge bg-secondary">${l.role}</span></td><td>${l.aktivitas}</td></tr>`;
+      });
+      document.getElementById('tblLogsBody').innerHTML = rows || '<tr><td colspan="5" class="text-center text-muted">Tidak ada log aktivitas.</td></tr>';
+      document.getElementById('paginationLogs').innerHTML = renderPaginationControls('logs', filtered.length, filterLogsTable);
+    };
 
     async function renderKepalaDashboard() {
       renderAdminLogs();
@@ -3170,7 +3136,7 @@
     }
 
 
-    // === 6. SUPER ADMIN: KELOLA DATABASE (DENGAN DROPDOWN RELASIONAL UNTUK SEMUA ID) ===
+    // === 6. SUPER ADMIN: KELOLA DATABASE (DENGAN DROPDOWN RELASIONAL AKURAT UNTUK TAMBAH & EDIT) ===
     async function renderSuperAdminDB(specificTable = 'siswa') {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Kelola Database (${specificTable})...`;
@@ -3272,7 +3238,7 @@
       document.getElementById('paginationDBManager').innerHTML = renderPaginationControls('dbManager', filtered.length, filterDatabaseTable);
     };
 
-    // Fungsi pembantu untuk membuat opsi dropdown relasional database
+    // Fungsi pembantu untuk membuat opsi dropdown relasional database yang akurat
     async function getWaliDropdownOptions(selectedVal = '') {
       try {
         const qWali = query(collection(db, "users"), where("role", "==", "walisiswa"));
@@ -3349,8 +3315,7 @@
         let val = obj[k] !== undefined && obj[k] !== null ? obj[k] : '';
         if (typeof val === 'object') val = JSON.stringify(val);
 
-        // Jika field berkaitan dengan id_wali / wali, gunakan dropdown database users role walisiswa terkonfirmasi
-        if (k === 'id_wali' || k.includes('wali')) {
+        if (k === 'id_wali' || k === 'wali_id' || k.includes('wali')) {
           let waliOptions = await getWaliDropdownOptions(val);
           html += `
             <div class="col-md-6">
@@ -3377,6 +3342,16 @@
               <label class="form-label fw-bold small text-success">${k} <span class="badge bg-success">Dropdown Database Kelas</span></label>
               <select class="form-select form-select-sm db-field-input border-success fw-bold" data-key="${k}">
                 ${kelasOptions}
+              </select>
+            </div>
+          `;
+        } else if (k === 'id_user' || k === 'user_id' || (k === 'id' && window.currentSelectedCollection === 'users')) {
+          let userOptions = await getCollectionDropdownOptions('users', val);
+          html += `
+            <div class="col-md-6">
+              <label class="form-label fw-bold small text-success">${k} <span class="badge bg-success">Dropdown Database Users</span></label>
+              <select class="form-select form-select-sm db-field-input border-success fw-bold" data-key="${k}">
+                ${userOptions}
               </select>
             </div>
           `;
