@@ -134,7 +134,7 @@
     </div>
   </div>
 
-  <!-- MODAL JAWABAN GURU / ADMIN UNTUK WALI -->
+  <!-- MODAL JAWABAN GURU / ADMIN / KEPSEK -->
   <div class="modal fade" id="jawabPesanModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -413,6 +413,37 @@
     </div>
   </div>
 
+  <!-- MODAL KENAIKAN KELAS SANTRI OLEH KEPALA SEKOLAH -->
+  <div class="modal fade" id="naikKelasModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-arrow-up-right-circle me-2"></i>Update / Kenaikan Kelas Santri</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="naikKelasSantriDocId">
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">Nama Santri & NIS:</label>
+            <div id="modalSantriInfoPreview" class="fw-bold text-success fs-6"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">Kelas Saat Ini:</label>
+            <div id="modalKelasLamaPreview" class="badge bg-secondary p-2 fs-6"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Pilih Kelas Tujuan Baru:</label>
+            <select id="modalKelasBaruSelect" class="form-select border-success"></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="submitKenaikanKelasSantri()"><i class="bi bi-save me-1"></i>Simpan Perubahan Kelas</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="printableReportArea"></div>
 
   <!-- FIREBASE SDK & APPLICATION LOGIC -->
@@ -467,7 +498,8 @@
       broadcast: { page: 1, limit: 10 },
       tahunAjaran: { page: 1, limit: 10 },
       moderasi: { page: 1, limit: 10 },
-      logs: { page: 1, limit: 10 }
+      logs: { page: 1, limit: 10 },
+      kepalaSiswa: { page: 1, limit: 10 }
     };
 
     // Helper: Pagination Component Rendering
@@ -544,6 +576,7 @@
         return includeEmpty ? '<option value="">-- Tidak Terikat Kelas --</option><option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>' : '<option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>';
       }
     }
+    window.getKelasDropdownOptions = getKelasDropdownOptions;
 
     // Helper: Ambil Daftar Wali Santri dari Tabel Users (Role 'walisiswa') untuk Dropdown
     async function getWaliDropdownOptions(selectedVal = '') {
@@ -729,14 +762,9 @@
         `;
       }
 
-      if (role === 'admin' || role === 'kepalasekolah' || role === 'superadmin') {
-        html += `
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminInfaq" onclick="switchTab('adminInfaq')"><i class="bi bi-cash-coin me-2"></i> Kelola Infaq Santri</a></li>
-        `;
-      }
-
       if (role === 'admin' || role === 'superadmin') {
         html += `
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminInfaq" onclick="switchTab('adminInfaq')"><i class="bi bi-cash-coin me-2"></i> Kelola Infaq Santri</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminSantri" onclick="switchTab('adminSantri')"><i class="bi bi-mortarboard me-2"></i> Master Data Santri</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminGuruMapping" onclick="switchTab('adminGuruMapping')"><i class="bi bi-person-badge me-2"></i> Penugasan Guru Kelas</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminUsers" onclick="switchTab('adminUsers')"><i class="bi bi-people me-2"></i> Kelola User</a></li>
@@ -750,7 +778,12 @@
 
       if (role === 'kepalasekolah' || role === 'superadmin') {
         html += `
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaReport" onclick="switchTab('kepalaReport')"><i class="bi bi-file-earmark-bar-graph me-2"></i> Monitoring Lembaga</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaDashboard" onclick="switchTab('kepalaDashboard')"><i class="bi bi-speedometer2 me-2"></i> Dashboard Monitoring</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaAkademik" onclick="switchTab('kepalaAkademik')"><i class="bi bi-calendar-check me-2"></i> Laporan Kehadiran & Akademik</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaInfaq" onclick="switchTab('kepalaInfaq')"><i class="bi bi-cash-coin me-2"></i> Audit Infaq Lembaga</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaModerasi" onclick="switchTab('kepalaModerasi')"><i class="bi bi-chat-dots me-2"></i> Pengawasan Masukan Wali</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaKenaikanKelas" onclick="switchTab('kepalaKenaikanKelas')"><i class="bi bi-arrow-up-right-circle me-2"></i> Update Kelas Santri</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaLogs" onclick="switchTab('kepalaLogs')"><i class="bi bi-clock-history me-2"></i> Audit Log Aktivitas</a></li>
         `;
       }
 
@@ -781,7 +814,12 @@
       else if (tabName === 'adminTahunAjaran') renderAdminTahunAjaran();
       else if (tabName === 'adminModerasi') renderAdminModerasi();
       else if (tabName === 'adminLogs') renderAdminLogs();
-      else if (tabName === 'kepalaReport') renderKepalaReport();
+      else if (tabName === 'kepalaDashboard') renderKepalaDashboard();
+      else if (tabName === 'kepalaAkademik') renderKepalaAkademik();
+      else if (tabName === 'kepalaInfaq') renderKepalaInfaq();
+      else if (tabName === 'kepalaModerasi') renderKepalaModerasi();
+      else if (tabName === 'kepalaKenaikanKelas') renderKepalaKenaikanKelas();
+      else if (tabName === 'kepalaLogs') renderKepalaLogs();
     };
 
     window.toggleSidebar = function() {
@@ -806,7 +844,7 @@
       if (window.currentUser.role === 'guru') {
         renderDashboardGuru();
       } else if (window.currentUser.role === 'kepalasekolah') {
-        renderKepalaReport();
+        renderKepalaDashboard();
       } else {
         renderDashboardWali();
       }
@@ -1602,7 +1640,7 @@
         <table style="width:100%; font-size:10pt; margin-bottom:12px; border:none;">
           <tr>
             <td width="15%"><strong>Nama Santri</strong></td><td width="35%">: ${namaSiswa}</td>
-            <td width="15%"><strong>Kelas</strong></td><td width="35%">: ${window.currentUser.id_kelas}</td>
+            <td width="15%"><strong>Kelas</strong></td><td width="35%">: ${window.currentUser.id_kelas || 'Kelas Umum'}</td>
           </tr>
           <tr>
             <td><strong>NIS</strong></td><td>: ${nisSiswa}</td>
@@ -1734,7 +1772,7 @@
       window.printGuruMatriksContent = `
         <div class="print-header">
           <h4>TPQ AL-MUAWANAH YAYASAN AL-MUAWANAH</h4>
-          <p>REKAPITULASI KEHADIRAN KELAS ${window.currentUser.id_kelas} - ${monthNames[bulan-1].toUpperCase()} ${tahun}</p>
+          <p>REKAPITULASI KEHADIRAN KELAS - ${monthNames[bulan-1].toUpperCase()} ${tahun}</p>
         </div>
         <table class="print-table" style="width:100%; border-collapse:collapse;">
           <thead>
@@ -2150,7 +2188,7 @@
         bootstrap.Modal.getInstance(document.getElementById('jawabPesanModal')).hide();
         
         if (window.currentUser.role === 'admin') renderAdminModerasi();
-        else if (window.currentUser.role === 'kepalasekolah') renderKepalaReport();
+        else if (window.currentUser.role === 'kepalasekolah') renderKepalaModerasi();
         else renderGuruResponWali();
       } catch (err) {
         alert('Gagal memproses tanggapan: ' + err.message);
@@ -2201,7 +2239,7 @@
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-cash-coin text-success me-2"></i> ${isAdmin ? 'Kelola Infaq Santri (Admin)' : 'Monitoring Infaq Santri'}</h5>
+          <h5><i class="bi bi-cash-coin text-success me-2"></i> ${isAdmin ? 'Kelola Infaq Santri (Admin)' : 'Audit Infaq Lembaga'}</h5>
           <hr>
           ${isAdmin ? `
             <ul class="nav nav-tabs" id="adminInfaqNav">
@@ -3147,8 +3185,6 @@
       window.rawTahunAjaranCache = listTA;
 
       const activeItem = listTA.find(item => item.is_active === true) || listTA[0];
-
-      // FILTER OTOMATIS BERDASARKAN TAHUN KALENDER SAAT INI (MISAL: 2026)
       const currentYearStr = new Date().getFullYear().toString();
       const filteredTAForSelection = listTA.filter(item => item.tahun_ajaran.includes(currentYearStr));
 
@@ -3192,7 +3228,7 @@
                       <i class="bi bi-info-circle-fill fs-4 me-3"></i>
                       <div>
                         <div class="small fw-bold">Tahun Ajaran Aktif Sekarang:</div>
-                        <h5 class="mb-0 fw-bold">${activeItem ? `${activeItem.tahun_ajaran} (Semester${activeItem.semester})` : 'Belum Ditentukan'}</h5>
+                        <h5 class="mb-0 fw-bold">${activeItem ? `${activeItem.tahun_ajaran} (Semester ${activeItem.semester})` : 'Belum Ditentukan'}</h5>
                       </div>
                     </div>
 
@@ -3376,7 +3412,7 @@
       }
     };
 
-    // --- 4.8 Moderasi Masukan (Admin - Modal Edit Jawaban Lengkap) ---
+    // --- 4.8 Moderasi Masukan (Admin) ---
     async function renderAdminModerasi() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Masukan...`;
@@ -3570,17 +3606,17 @@
       document.getElementById('paginationLogs').innerHTML = renderPaginationControls('logs', filtered.length, 'filterLogsTable');
     };
 
-    // === 5. KEPALA SEKOLAH FITUR (MONITORING EKSEKUTIF) ===
-    async function renderKepalaReport() {
+    // === 5. KEPALA SEKOLAH FITUR LENGKAP (6 POIN PRIVILEGE) ===
+
+    // 5.1 Dashboard Monitoring Eksekutif & Statistik Global
+    async function renderKepalaDashboard() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Dashboard Monitoring Lembaga...`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Dashboard Eksekutif...`;
 
       const snapSiswa = await getDocs(collection(db, "siswa"));
       const snapGuru = await getDocs(query(collection(db, "users"), where("role", "==", "guru")));
       const snapAbsen = await getDocs(collection(db, "absensi"));
       const snapInfaq = await getDocs(collection(db, "infaq"));
-      const snapMasukan = await getDocs(collection(db, "masukan_wali"));
-      const snapLogs = await getDocs(collection(db, "system_logs"));
 
       let totalInfaq = 0;
       snapInfaq.forEach(d => { totalInfaq += Number(d.data().jumlah) || 0; });
@@ -3590,8 +3626,8 @@
 
       main.innerHTML = `
         <div class="card card-dashboard p-4 mb-4 border-start border-success border-4">
-          <h5><i class="bi bi-speedometer2 text-success me-2"></i> Dashboard Monitoring Eksekutif Kepala Sekolah</h5>
-          <p class="text-muted small">Ringkasan statistik global, pengawasan akademik, keuangan, dan audit aktivitas seluruh civitas akademika TPQ Al-Muawanah.</p>
+          <h5><i class="bi bi-speedometer2 text-success me-2"></i> Dashboard Monitoring Eksekutif & Statistik Global</h5>
+          <p class="text-muted small">Ringkasan statistik menyeluruh lembaga TPQ Al-Muawanah untuk pengawasan dan pengambilan kebijakan strategis.</p>
         </div>
 
         <div class="row g-3 mb-4">
@@ -3609,7 +3645,7 @@
           </div>
           <div class="col-md-3">
             <div class="card card-dashboard p-3 bg-warning bg-opacity-10 border border-warning">
-              <h6 class="text-warning text-dark fw-bold">Akumulasi Infaq</h6>
+              <h6 class="text-warning text-dark fw-bold">Akumulasi Infaq Lembaga</h6>
               <h3 class="mb-0 fw-bold text-dark fs-5">Rp ${totalInfaq.toLocaleString('id-ID')}</h3>
             </div>
           </div>
@@ -3622,93 +3658,450 @@
         </div>
 
         <div class="card card-dashboard p-4">
-          <ul class="nav nav-tabs" id="kepalaReportTabs">
-            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabKepalaInfaq">Monitoring Infaq Lembaga</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabKepalaMasukan">Pengawasan Pesan Wali</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabKepalaLogs">Audit Log Aktivitas Sistem</a></li>
+          <h5 class="fw-bold text-success mb-3"><i class="bi bi-graph-up me-2"></i> Grafik & Perkembangan Infaq Lembaga</h5>
+          <p class="text-muted small">Ikhtisar tren keuangan infaq dan rekapitulasi kehadiran global seluruh kelas.</p>
+          <div class="alert alert-light border p-4 text-center">
+            <i class="bi bi-bar-chart-line-fill text-success display-4 mb-2"></i>
+            <h6 class="fw-bold">Sistem Keuangan & Kehadiran Terintegrasi Aktif</h6>
+            <p class="text-muted mb-0 small">Seluruh data keuangan infaq dan rekapitulasi absensi kelas terhubung secara real-time dari database pusat.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // 5.2 Laporan Kehadiran & Akademik Kelas (Matriks & Rekap Nilai + Cetak PDF A4/Landscape)
+    async function renderKepalaAkademik() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Laporan Akademik...`;
+
+      const snapKelas = await getDocs(collection(db, "kelas"));
+      let kelasOptions = '';
+      snapKelas.forEach(d => {
+        const k = d.data();
+        kelasOptions += `<option value="${k.id_kelas}">${k.id_kelas} - ${k.nama_kelas}</option>`;
+      });
+
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      let monthOptions = monthNames.map((m, idx) => `<option value="${idx+1}" ${idx+1 === currentMonth ? 'selected':''}>${m}</option>`).join('');
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-calendar-check text-success me-2"></i> Laporan Kehadiran & Akademik Kelas</h5>
+          <p class="text-muted small">Akses rekapitulasi kehadiran bulanan (matriks kelas) dan rekapitulasi nilai harian dari seluruh kelas untuk dievaluasi tanpa mengubah data.</p>
+          <hr>
+
+          <ul class="nav nav-tabs" id="kepalaAkademikTabs">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabKepalaMatriks">Rekapitulasi Matriks Kehadiran</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabKepalaNilai">Rekapitulasi Nilai Akademik</a></li>
           </ul>
 
           <div class="tab-content pt-3">
-            <div class="tab-pane fade show active" id="tabKepalaInfaq">
-              <div id="kepalaInfaqContainer"></div>
+            <div class="tab-pane fade show active" id="tabKepalaMatriks">
+              <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+                <div class="col-md-3">
+                  <label class="form-label fw-bold mb-1">Pilih Kelas:</label>
+                  <select id="kepalaFilterKelasMatriks" class="form-select border-success" onchange="loadKepalaMatriksData()">${kelasOptions}</select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold mb-1">Pilih Bulan:</label>
+                  <select id="kepalaFilterBulanMatriks" class="form-select border-success" onchange="loadKepalaMatriksData()">${monthOptions}</select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold mb-1">Pilih Tahun:</label>
+                  <select id="kepalaFilterTahunMatriks" class="form-select border-success" onchange="loadKepalaMatriksData()">
+                    <option value="${currentYear-1}">${currentYear-1}</option>
+                    <option value="${currentYear}" selected>${currentYear}</option>
+                    <option value="${currentYear+1}">${currentYear+1}</option>
+                  </select>
+                </div>
+                <div class="col-md-3 text-end align-self-end">
+                  <button class="btn btn-success w-100" onclick="printKepalaMatriksPDF()"><i class="bi bi-file-earmark-pdf me-1"></i>Cetak PDF Matriks (Landscape)</button>
+                </div>
+              </div>
+              <div class="table-responsive" id="kepalaMatriksContainer"><div class="text-center text-muted p-3">Memuat matriks kehadiran...</div></div>
             </div>
-            <div class="tab-pane fade" id="tabKepalaMasukan">
-              <div id="kepalaMasukanContainer"></div>
-            </div>
-            <div class="tab-pane fade" id="tabKepalaLogs">
-              <div id="kepalaLogsContainer"></div>
+
+            <div class="tab-pane fade" id="tabKepalaNilai">
+              <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+                <div class="col-md-4">
+                  <label class="form-label fw-bold mb-1">Filter Kelas:</label>
+                  <select id="kepalaFilterKelasNilai" class="form-select border-success" onchange="loadKepalaNilaiData()">
+                    <option value="ALL">-- Semua Kelas --</option>
+                    ${kelasOptions}
+                  </select>
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label fw-bold mb-1">Pencarian Nilai / Materi:</label>
+                  <input type="text" id="kepalaSearchNilaiInput" class="form-control border-success" placeholder="Cari..." onkeyup="loadKepalaNilaiData()">
+                </div>
+                <div class="col-md-3 text-end align-self-end">
+                  <button class="btn btn-success w-100" onclick="printKepalaNilaiPDF()"><i class="bi bi-file-earmark-pdf me-1"></i>Cetak PDF Nilai (A4)</button>
+                </div>
+              </div>
+              <div class="table-responsive" id="kepalaNilaiContainer"><div class="text-center text-muted p-3">Memuat rekap nilai...</div></div>
             </div>
           </div>
         </div>
       `;
 
-      // Render Sub-konten Infaq untuk Kepala Sekolah
-      renderAdminInfaq();
-      // Pindahkan ke container kepala jika diperlukan atau gunakan fungsi render terpisah
-      setTimeout(() => {
-        const infaqTabContent = document.getElementById('tabRekapInfaq');
-        if (infaqTabContent) {
-          document.getElementById('kepalaInfaqContainer').innerHTML = infaqTabContent.innerHTML;
+      loadKepalaMatriksData();
+      loadKepalaNilaiData();
+    }
+
+    window.loadKepalaMatriksData = async function() {
+      const idKelas = document.getElementById('kepalaFilterKelasMatriks')?.value;
+      const bulan = parseInt(document.getElementById('kepalaFilterBulanMatriks')?.value, 10);
+      const tahun = parseInt(document.getElementById('kepalaFilterTahunMatriks')?.value, 10);
+      const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      const daysInMonth = new Date(tahun, bulan, 0).getDate();
+
+      const qS = query(collection(db, "siswa"), where("id_kelas", "==", idKelas));
+      const snapS = await getDocs(qS);
+      let siswaList = [];
+      snapS.forEach(d => siswaList.push({ id_siswa: d.id, ...d.data() }));
+
+      const snapA = await getDocs(collection(db, "absensi"));
+      let absensiList = [];
+      snapA.forEach(d => {
+        const item = d.data();
+        if (siswaList.some(s => s.id_siswa === item.id_siswa)) {
+          absensiList.push(item);
         }
-        
-        // Render Pengawasan Masukan Wali
-        let masukanRows = '';
-        let noM = 1;
-        snapMasukan.forEach(d => {
-          const item = d.data();
-          masukanRows += `
-            <tr>
-              <td class="text-center">${noM++}</td>
-              <td>${item.tanggal}</td>
-              <td><strong>${item.subjek}</strong><p class="mb-0 small text-muted">${item.pesan}</p></td>
-              <td>${item.jawaban || '<em class="text-muted">Belum ditanggapi</em>'}</td>
-              <td class="text-center"><span class="badge bg-secondary">${item.status}</span></td>
-              <td class="text-center">
-                <button class="btn btn-sm btn-outline-success p-1 py-0" onclick="openModalJawab('${d.id}', '${encodeURIComponent(item.pesan)}', '${encodeURIComponent(item.jawaban || '')}', '${item.status}')">
-                  <i class="bi bi-reply"></i> Tanggapi / Edit
-                </button>
-              </td>
-            </tr>
-          `;
-        });
-        document.getElementById('kepalaMasukanContainer').innerHTML = `
-          <div class="table-responsive">
-            <table class="table table-bordered align-middle">
-              <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th width="100">Tanggal</th><th>Pesan Wali</th><th>Tanggapan Sekolah</th><th width="110" class="text-center">Status</th><th width="130" class="text-center">Aksi</th></tr>
-              </thead>
-              <tbody>${masukanRows || '<tr><td colspan="6" class="text-center text-muted">Belum ada data masukan.</td></tr>'}</tbody>
-            </table>
-          </div>
+      });
+
+      let matrixMap = {};
+      absensiList.forEach(item => {
+        if (!matrixMap[item.id_siswa]) matrixMap[item.id_siswa] = {};
+        matrixMap[item.id_siswa][item.tanggal] = item.status;
+      });
+
+      let headerDatesHtml = '';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(tahun, bulan - 1, d);
+        const isSunday = (dateObj.getDay() === 0);
+        headerDatesHtml += `<th style="width:28px; min-width:28px;" class="${isSunday ? 'bg-danger bg-opacity-25' : ''}">${d}</th>`;
+      }
+
+      let bodyRowsHtml = '';
+      let printBodyRowsHtml = '';
+      const monthPadded = bulan < 10 ? '0' + bulan : bulan;
+
+      siswaList.forEach((s, idx) => {
+        let cellsHtml = '';
+        let printCellsHtml = '';
+        let totalM = 0, totalI = 0, totalS = 0, totalA = 0;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dayPadded = d < 10 ? '0' + d : d;
+          const dateKey = `${tahun}-${monthPadded}-${dayPadded}`;
+          const dateObj = new Date(tahun, bulan - 1, d);
+          const isSunday = (dateObj.getDay() === 0);
+
+          let st = matrixMap[s.id_siswa] ? matrixMap[s.id_siswa][dateKey] : null;
+          let symbol = '-';
+          let printSymbol = '-';
+
+          if (st === 'Masuk') { symbol = '<span class="matrix-symbol-check">✓</span>'; printSymbol = '✓'; totalM++; }
+          else if (st === 'Izin') { symbol = '<span class="matrix-symbol-izin">i</span>'; printSymbol = 'i'; totalI++; }
+          else if (st === 'Sakit') { symbol = '<span class="matrix-symbol-sakit">s</span>'; printSymbol = 's'; totalS++; }
+          else if (st === 'Alpa') { symbol = '<span class="matrix-symbol-alpa">a</span>'; printSymbol = 'a'; totalA++; }
+
+          cellsHtml += `<td class="${isSunday ? 'bg-light' : ''}">${symbol}</td>`;
+          printCellsHtml += `<td style="text-align:center; ${isSunday ? 'background-color:#ffe6e6;' : ''}">${printSymbol}</td>`;
+        }
+
+        bodyRowsHtml += `
+          <tr>
+            <td class="text-center">${idx + 1}</td>
+            <td class="sticky-col fw-semibold">${s.nama_siswa}</td>
+            ${cellsHtml}
+            <td class="bg-success bg-opacity-10 text-success fw-bold">${totalM}</td>
+            <td class="bg-info bg-opacity-10 text-info fw-bold">${totalI}</td>
+            <td class="bg-warning bg-opacity-10 text-warning fw-bold">${totalS}</td>
+            <td class="bg-danger bg-opacity-10 text-danger fw-bold">${totalA}</td>
+          </tr>
         `;
 
-        // Render Audit Log
-        let logRows = '';
-        let noL = 1;
-        snapLogs.forEach(d => {
-          const l = d.data();
-          logRows += `
+        printBodyRowsHtml += `
+          <tr>
+            <td style="text-align:center;">${idx + 1}</td>
+            <td style="text-align:left; font-weight:600; white-space:nowrap;">${s.nama_siswa}</td>
+            ${printCellsHtml}
+            <td style="text-align:center; font-weight:bold;">${totalM}</td>
+            <td style="text-align:center; font-weight:bold;">${totalI}</td>
+            <td style="text-align:center; font-weight:bold;">${totalS}</td>
+            <td style="text-align:center; font-weight:bold;">${totalA}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('kepalaMatriksContainer').innerHTML = `
+        <table class="table table-sm table-bordered matrix-table align-middle">
+          <thead class="table-success">
             <tr>
-              <td class="text-center">${noL++}</td>
-              <td><small>${new Date(l.tanggal).toLocaleString('id-ID')}</small></td>
-              <td><strong>${l.user}</strong></td>
-              <td><span class="badge bg-secondary">${l.role}</span></td>
-              <td>${l.aktivitas}</td>
+              <th width="30" class="text-center">No</th>
+              <th class="sticky-col" style="min-width:180px;">Nama Santri</th>
+              ${headerDatesHtml}
+              <th class="text-success bg-success bg-opacity-25" width="30">M</th>
+              <th class="text-info bg-info bg-opacity-25" width="30">I</th>
+              <th class="text-warning bg-warning bg-opacity-25" width="30">S</th>
+              <th class="text-danger bg-danger bg-opacity-25" width="30">A</th>
+            </tr>
+          </thead>
+          <tbody>${bodyRowsHtml || '<tr><td colspan="37" class="text-center text-muted">Tidak ada santri di kelas ini.</td></tr>'}</tbody>
+        </table>
+      `;
+
+      window.printKepalaMatriksContent = `
+        <div class="print-header">
+          <h4>TPQ AL-MUAWANAH YAYASAN AL-MUAWANAH</h4>
+          <p>REKAPITULASI KEHADIRAN KELAS ${idKelas} - ${monthNames[bulan-1].toUpperCase()} ${tahun}</p>
+        </div>
+        <table class="print-table" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th width="20">No</th>
+              <th style="min-width:120px; text-align:left;">Nama Santri</th>
+              ${headerDatesHtml}
+              <th width="20">M</th><th width="20">I</th><th width="20">S</th><th width="20">A</th>
+            </tr>
+          </thead>
+          <tbody>${printBodyRowsHtml}</tbody>
+        </table>
+      `;
+    };
+
+    window.printKepalaMatriksPDF = function() {
+      document.body.classList.add('landscape-mode');
+      if (!window.printKepalaMatriksContent) return;
+      document.getElementById('printableReportArea').innerHTML = window.printKepalaMatriksContent;
+      window.print();
+    };
+
+    window.loadKepalaNilaiData = async function() {
+      const selectedKelas = document.getElementById('kepalaFilterKelasNilai')?.value;
+      const searchQuery = document.getElementById('kepalaSearchNilaiInput')?.value.toLowerCase().trim();
+
+      const snapS = await getDocs(collection(db, "siswa"));
+      let siswaMap = {};
+      let siswaKelasMap = {};
+      snapS.forEach(d => {
+        const s = d.data();
+        siswaMap[d.id] = s.nama_siswa;
+        siswaKelasMap[d.id] = s.id_kelas;
+      });
+
+      const snapN = await getDocs(collection(db, "nilai"));
+      let nilaiList = [];
+      let printRowsHtml = '';
+      let no = 1;
+
+      snapN.forEach(d => {
+        const item = d.data();
+        const kelasSiswa = siswaKelasMap[item.id_siswa] || '-';
+        const namaSiswa = siswaMap[item.id_siswa] || 'Santri';
+
+        const matchKelas = (selectedKelas === 'ALL' || !selectedKelas || kelasSiswa === selectedKelas);
+        const matchText = !searchQuery || 
+          namaSiswa.toLowerCase().includes(searchQuery) ||
+          item.materi.toLowerCase().includes(searchQuery) ||
+          item.nilai.toLowerCase().includes(searchQuery) ||
+          (item.catatan && item.catatan.toLowerCase().includes(searchQuery));
+
+        if (matchKelas && matchText) {
+          nilaiList.push({ ...item, nama_siswa: namaSiswa, id_kelas: kelasSiswa });
+          printRowsHtml += `
+            <tr>
+              <td style="text-align:center;">${no}</td>
+              <td>${namaSiswa}</td>
+              <td style="text-align:center;">${kelasSiswa}</td>
+              <td style="text-align:center;">${item.tanggal}</td>
+              <td>${item.materi}</td>
+              <td style="text-align:center; font-weight:bold;">${item.nilai}</td>
+              <td>${item.catatan || '-'}</td>
             </tr>
           `;
-        });
-        document.getElementById('kepalaLogsContainer').innerHTML = `
+          no++;
+        }
+      });
+
+      let webRows = nilaiList.map((item, idx) => `
+        <tr>
+          <td class="text-center">${idx + 1}</td>
+          <td><strong>${item.nama_siswa}</strong></td>
+          <td class="text-center"><span class="badge bg-info text-dark">${item.id_kelas}</span></td>
+          <td class="text-center">${item.tanggal}</td>
+          <td>${item.materi}</td>
+          <td class="text-center"><span class="badge bg-success">${item.nilai}</span></td>
+          <td>${item.catatan || '-'}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('kepalaNilaiContainer').innerHTML = `
+        <table class="table table-sm table-bordered align-middle">
+          <thead class="table-success">
+            <tr><th width="40" class="text-center">No</th><th>Nama Santri</th><th width="90" class="text-center">Kelas</th><th width="110" class="text-center">Tanggal</th><th>Materi</th><th width="90" class="text-center">Nilai</th><th>Catatan</th></tr>
+          </thead>
+          <tbody>${webRows || '<tr><td colspan="7" class="text-center text-muted">Data nilai tidak ditemukan.</td></tr>'}</tbody>
+        </table>
+      `;
+
+      window.printKepalaNilaiContent = `
+        <div class="print-header">
+          <h4>TPQ AL-MUAWANAH YAYASAN AL-MUAWANAH</h4>
+          <p>REKAPITULASI NILAI AKADEMIK SELURUH KELAS</p>
+        </div>
+        <table class="print-table">
+          <thead>
+            <tr>
+              <th width="30">No</th><th>Nama Santri</th><th width="50">Kelas</th><th width="70">Tanggal</th><th>Materi</th><th width="50">Nilai</th><th>Catatan</th>
+            </tr>
+          </thead>
+          <tbody>${printRowsHtml}</tbody>
+        </table>
+      `;
+    };
+
+    window.printKepalaNilaiPDF = function() {
+      document.body.classList.remove('landscape-mode');
+      if (!window.printKepalaNilaiContent) return;
+      document.getElementById('printableReportArea').innerHTML = window.printKepalaNilaiContent;
+      window.print();
+    };
+
+    // 5.3 Audit Keuangan & Infaq Santri (Memanggil renderAdminInfaq)
+    async function renderKepalaInfaq() {
+      renderAdminInfaq();
+    }
+
+    // 5.4 Pengawasan Tanya & Masukan (Moderasi Lanjutan)
+    async function renderKepalaModerasi() {
+      renderAdminModerasi();
+    }
+
+    // 5.5 Update & Kenaikan Kelas Santri Persiswa
+    async function renderKepalaKenaikanKelas() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Santri...`;
+
+      const kelasOptionsHtml = await getKelasDropdownOptions('', true);
+
+      const snapS = await getDocs(collection(db, "siswa"));
+      let santriList = [];
+      snapS.forEach(d => santriList.push({ docId: d.id, ...d.data() }));
+      santriList.sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
+      window.rawSantriListCache = santriList;
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-arrow-up-right-circle text-success me-2"></i> Update / Kenaikan Kelas Santri (Persiswa)</h5>
+          <p class="text-muted small">Kepala sekolah dapat memantau dan menaikkan kelas santri secara individu atau per-siswa untuk tahun ajaran baru.</p>
+          <hr>
+          
+          <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
+            <div class="col-md-4">
+              <label class="form-label fw-bold mb-1">Filter Kelas:</label>
+              <select id="filterKelasKenaikan" class="form-select border-success" onchange="filterKenaikanKelasTable()">
+                <option value="ALL">-- Semua Kelas --</option>
+                ${kelasOptionsHtml.replace('<option value="">-- Tidak Terikat Kelas --</option>', '')}
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-bold mb-1">Pencarian Santri:</label>
+              <input type="text" id="searchKenaikanInput" class="form-control border-success" placeholder="Cari nama atau NIS santri..." onkeyup="filterKenaikanKelasTable()">
+            </div>
+          </div>
+
           <div class="table-responsive">
             <table class="table table-sm table-bordered align-middle">
               <thead class="table-success">
-                <tr><th width="40" class="text-center">No</th><th width="160">Waktu</th><th width="150">Pengguna</th><th width="100">Role</th><th>Aktivitas</th></tr>
+                <tr>
+                  <th width="40" class="text-center">No</th>
+                  <th width="100">NIS</th>
+                  <th>Nama Santri</th>
+                  <th width="120" class="text-center">Kelas Saat Ini</th>
+                  <th width="110" class="text-center">Status</th>
+                  <th width="160" class="text-center">Aksi Kenaikan Kelas</th>
+                </tr>
               </thead>
-              <tbody>${logRows || '<tr><td colspan="5" class="text-center text-muted">Log aktivitas kosong.</td></tr>'}</tbody>
+              <tbody id="tblKenaikanKelasBody"></tbody>
             </table>
           </div>
-        `;
-      }, 300);
+          <div id="paginationKepalaSiswa"></div>
+        </div>
+      `;
+
+      filterKenaikanKelasTable();
     }
+
+    window.filterKenaikanKelasTable = function() {
+      const selectedKelas = document.getElementById('filterKelasKenaikan')?.value;
+      const searchQuery = document.getElementById('searchKenaikanInput')?.value.toLowerCase().trim();
+
+      let filtered = window.rawSantriListCache.filter(s => {
+        const matchKelas = (selectedKelas === 'ALL' || !selectedKelas || s.id_kelas === selectedKelas);
+        const matchText = !searchQuery || 
+          s.nama_siswa.toLowerCase().includes(searchQuery) ||
+          s.nis.toLowerCase().includes(searchQuery);
+        return matchKelas && matchText;
+      });
+
+      const paginated = paginateArray(filtered, 'kepalaSiswa');
+      let rows = '';
+      let no = (window.paginationState.kepalaSiswa.page - 1) * window.paginationState.kepalaSiswa.limit + 1;
+
+      paginated.forEach(s => {
+        rows += `
+          <tr>
+            <td class="text-center">${no++}</td>
+            <td><strong>${s.nis}</strong></td>
+            <td>${s.nama_siswa}</td>
+            <td class="text-center"><span class="badge bg-info text-dark">${s.id_kelas}</span></td>
+            <td class="text-center"><span class="badge bg-success">${s.status_siswa || 'Aktif'}</span></td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-success px-2 py-1" onclick="openModalKenaikanKelas('${s.docId}', '${encodeURIComponent(s.nama_siswa)} (${s.nis})', '${s.id_kelas}')">
+                <i class="bi bi-arrow-up-right me-1"></i>Naikkan Kelas
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('tblKenaikanKelasBody').innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">Data santri tidak ditemukan.</td></tr>';
+      document.getElementById('paginationKepalaSiswa').innerHTML = renderPaginationControls('kepalaSiswa', filtered.length, 'filterKenaikanKelasTable');
+    };
+
+    window.openModalKenaikanKelas = async function(docId, infoSantri, kelasLama) {
+      document.getElementById('naikKelasSantriDocId').value = docId;
+      document.getElementById('modalSantriInfoPreview').innerText = decodeURIComponent(infoSantri);
+      document.getElementById('modalKelasLamaPreview').innerText = kelasLama;
+      document.getElementById('modalKelasBaruSelect').innerHTML = await getKelasDropdownOptions(kelasLama, false);
+      new bootstrap.Modal(document.getElementById('naikKelasModal')).show();
+    };
+
+    window.submitKenaikanKelasSantri = async function() {
+      const docId = document.getElementById('naikKelasSantriDocId').value;
+      const kelasBaru = document.getElementById('modalKelasBaruSelect').value;
+
+      try {
+        await updateDoc(doc(db, "siswa", docId), { id_kelas: kelasBaru });
+        await logSystemActivity(`Kepala Sekolah menaikkan kelas santri ID ${docId} ke kelas ${kelasBaru}`);
+        alert('Kelas santri berhasil diperbarui / dinaikkan!');
+        bootstrap.Modal.getInstance(document.getElementById('naikKelasModal')).hide();
+        renderKepalaKenaikanKelas();
+      } catch (err) {
+        alert('Gagal mengubah kelas santri: ' + err.message);
+      }
+    };
+
+    // 5.6 Audit Log Aktivitas Sistem
+    async function renderKepalaLogs() {
+      renderAdminLogs();
+    }
+
 
     // AUTO RESTORE SESSION
     const savedUser = localStorage.getItem('tpq_user');
