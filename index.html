@@ -773,7 +773,6 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-waliAbsensi" onclick="switchTab('waliAbsensi')"><i class="bi bi-calendar-check me-2"></i> Pengajuan Absensi</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-waliMonitoring" onclick="switchTab('waliMonitoring')"><i class="bi bi-graph-up me-2"></i> Monitoring Santri</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-waliMasukan" onclick="switchTab('waliMasukan')"><i class="bi bi-chat-dots me-2"></i> Tanya & Masukan</a></li>
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-profil" onclick="switchTab('profil')"><i class="bi bi-person-circle me-2"></i> Ubah Profil</a></li>
         `;
       }
 
@@ -784,7 +783,6 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruNilai" onclick="switchTab('guruNilai')"><i class="bi bi-journal-check me-2"></i> Kelola Nilai Santri</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruCatatan" onclick="switchTab('guruCatatan')"><i class="bi bi-chat-left-text me-2"></i> Catatan Guru</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruResponWali" onclick="switchTab('guruResponWali')"><i class="bi bi-chat-square-quote me-2"></i> Respon & Pertanyaan Wali</a></li>
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-profil" onclick="switchTab('profil')"><i class="bi bi-person-circle me-2"></i> Ubah Profil</a></li>
         `;
       }
 
@@ -799,7 +797,6 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminTahunAjaran" onclick="switchTab('adminTahunAjaran')"><i class="bi bi-calendar3 me-2"></i> Tahun Ajaran & Semester</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminModerasi" onclick="switchTab('adminModerasi')"><i class="bi bi-shield-check me-2"></i> Moderasi Masukan</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminLogs" onclick="switchTab('adminLogs')"><i class="bi bi-clock-history me-2"></i> Audit Log Aktivitas</a></li>
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-profil" onclick="switchTab('profil')"><i class="bi bi-person-circle me-2"></i> Ubah Profil</a></li>
         `;
       }
 
@@ -811,7 +808,16 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaModerasi" onclick="switchTab('kepalaModerasi')"><i class="bi bi-chat-dots me-2"></i> Pengawasan Masukan Wali</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaKenaikanKelas" onclick="switchTab('kepalaKenaikanKelas')"><i class="bi bi-arrow-up-right-circle me-2"></i> Update Kelas Santri</a></li>
           <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaLogs" onclick="switchTab('kepalaLogs')"><i class="bi bi-clock-history me-2"></i> Audit Log Aktivitas</a></li>
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-profil" onclick="switchTab('profil')"><i class="bi bi-person-circle me-2"></i> Ubah Profil</a></li>
+        `;
+      }
+
+      // === TAMBAHAN MENU UBAH PASSWORD UNTUK SEMUA ROLE KECUALI SUPERADMIN ===
+      if (role !== 'superadmin') {
+        html += `
+          <hr class="text-muted my-2">
+          <li class="nav-item">
+            <a class="nav-link mb-1" id="menu-ubahPassword" onclick="switchTab('ubahPassword')"><i class="bi bi-key-fill me-2"></i> Ubah Password</a>
+          </li>
         `;
       }
 
@@ -959,7 +965,7 @@
       else if (tabName === 'kepalaKenaikanKelas') renderKepalaKenaikanKelas();
       else if (tabName === 'kepalaLogs') renderKepalaLogs();
       else if (tabName === 'superAdminDB') renderSuperAdminDB();
-      else if (tabName === 'profil') renderProfil();
+      else if (tabName === 'ubahPassword') renderUbahPassword();
     }
 
     window.toggleSidebar = function() {
@@ -989,74 +995,6 @@
       }
       return window.currentUser.id_kelas || '';
     }
-
-    // -------------------------------------------------------------
-    // FITUR UBAH PROFIL (UNTUK SEMUA ROLE KECUALI SUPERADMIN)
-    // -------------------------------------------------------------
-    async function renderProfil() {
-      const main = document.getElementById('mainContent');
-      const u = window.currentUser;
-
-      main.innerHTML = `
-        <div class="card card-dashboard p-4" style="max-width: 600px; margin: 0 auto;">
-          <h5><i class="bi bi-person-circle text-success me-2"></i> Ubah Profil Pengguna</h5>
-          <p class="text-muted small">Anda dapat memperbarui nama lengkap dan password akun Anda. Username bersifat permanen dan tidak dapat diubah.</p>
-          <hr>
-          <form onsubmit="submitUpdateProfil(event)">
-            <div class="mb-3">
-              <label class="form-label fw-bold">Username (Permanen)</label>
-              <input type="text" class="form-control bg-light" value="${u.username}" disabled readonly>
-              <div class="form-text">Username terkunci dan tidak dapat diubah.</div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">Nama Lengkap</label>
-              <input type="text" id="profilNama" class="form-control border-success" value="${u.nama}" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">Password Baru</label>
-              <input type="password" id="profilPassword" class="form-control border-success" value="${u.password}" required placeholder="Masukkan password baru">
-              <div class="form-text">Isi dengan password baru atau biarkan sama.</div>
-            </div>
-            <div class="d-flex justify-content-end">
-              <button type="submit" class="btn btn-success px-4"><i class="bi bi-save me-1"></i> Simpan Perubahan Profil</button>
-            </div>
-          </form>
-        </div>
-      `;
-    }
-
-    window.submitUpdateProfil = async function(e) {
-      e.preventDefault();
-      const newNama = document.getElementById('profilNama').value.trim();
-      const newPass = document.getElementById('profilPassword').value.trim();
-      
-      if (!newNama || !newPass) {
-        alert('Nama lengkap dan password tidak boleh kosong.');
-        return;
-      }
-
-      try {
-        const userDocRef = doc(db, "users", window.currentUser.id_user);
-        await updateDoc(userDocRef, {
-          nama: newNama,
-          password: newPass
-        });
-
-        // Update local session state
-        window.currentUser.nama = newNama;
-        window.currentUser.password = newPass;
-        localStorage.setItem('tpq_user', JSON.stringify(window.currentUser));
-
-        // Update badge UI text
-        document.getElementById('userBadge').innerText = `${window.currentUser.nama} (${window.currentUser.role.toUpperCase()})`;
-
-        await logSystemActivity(`Memperbarui profil akun sendiri`);
-        alert('Profil berhasil diperbarui!');
-        renderProfil();
-      } catch (err) {
-        alert('Gagal memperbarui profil: ' + err.message);
-      }
-    };
 
     // -------------------------------------------------------------
     // RENDERING FEATURES (DIPADUKAN DENGAN FILTER GLOBAL SUPER ADMIN)
@@ -1216,6 +1154,83 @@
       html += '</ul>';
       document.getElementById('publicBoard').innerHTML = html;
     }
+
+    // --- FITUR KHUSUS UBAH PASSWORD (SELAIN SUPERADMIN) ---
+    function renderUbahPassword() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div class="card card-dashboard p-4" style="max-width: 600px; margin: 0 auto;">
+          <h5 class="mb-3"><i class="bi bi-key-fill text-success me-2"></i> Ubah Password Akun</h5>
+          <p class="text-muted small mb-4">Fitur ini hanya mengizinkan Anda untuk mengubah kata sandi akun Anda sendiri. Nama, username, dan informasi profil lainnya tidak dapat diubah dari sini.</p>
+          
+          <div id="alertUbahPassword"></div>
+
+          <form onsubmit="submitUbahPassword(event)">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Username Anda (Permanen)</label>
+              <input type="text" class="form-control bg-light" value="${window.currentUser.username}" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nama Lengkap (Permanen)</label>
+              <input type="text" class="form-control bg-light" value="${window.currentUser.nama}" readonly>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Password Saat Ini</label>
+              <input type="password" id="currentPasswordInput" class="form-control border-success" required placeholder="Masukkan password saat ini">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Password Baru</label>
+              <input type="password" id="newPasswordInput" class="form-control border-success" required placeholder="Masukkan password baru">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Konfirmasi Password Baru</label>
+              <input type="password" id="confirmPasswordInput" class="form-control border-success" required placeholder="Ulangi password baru">
+            </div>
+            <button type="submit" class="btn btn-success px-4"><i class="bi bi-save me-1"></i> Simpan Password Baru</button>
+          </form>
+        </div>
+      `;
+    }
+
+    window.submitUbahPassword = async function(e) {
+      e.preventDefault();
+      const currentPass = document.getElementById('currentPasswordInput').value.trim();
+      const newPass = document.getElementById('newPasswordInput').value.trim();
+      const confirmPass = document.getElementById('confirmPasswordInput').value.trim();
+      const alertBox = document.getElementById('alertUbahPassword');
+
+      if (currentPass !== window.currentUser.password) {
+        alertBox.innerHTML = `<div class="alert alert-danger p-2 small">Password saat ini tidak sesuai dengan data sistem.</div>`;
+        return;
+      }
+
+      if (newPass !== confirmPass) {
+        alertBox.innerHTML = `<div class="alert alert-danger p-2 small">Konfirmasi password baru tidak cocok.</div>`;
+        return;
+      }
+
+      if (newPass.length < 4) {
+        alertBox.innerHTML = `<div class="alert alert-warning p-2 small">Password baru terlalu pendek (minimal 4 karakter).</div>`;
+        return;
+      }
+
+      try {
+        const userDocRef = doc(db, "users", window.currentUser.id_user);
+        await updateDoc(userDocRef, { password: newPass });
+        
+        // Update local state & session storage
+        window.currentUser.password = newPass;
+        localStorage.setItem('tpq_user', JSON.stringify(window.currentUser));
+
+        await logSystemActivity(`Mengubah password akun mandiri`);
+        alertBox.innerHTML = `<div class="alert alert-success p-2 small">Password berhasil diperbarui!</div>`;
+        document.getElementById('currentPasswordInput').value = '';
+        document.getElementById('newPasswordInput').value = '';
+        document.getElementById('confirmPasswordInput').value = '';
+      } catch (err) {
+        alertBox.innerHTML = `<div class="alert alert-danger p-2 small">Gagal mengubah password: ${err.message}</div>`;
+      }
+    };
 
     function renderWaliAbsensi() {
       const activeChild = getActiveChild();
