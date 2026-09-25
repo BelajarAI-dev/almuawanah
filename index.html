@@ -476,11 +476,13 @@
       const totalPages = Math.ceil(totalItems / state.limit) || 1;
       if (state.page > totalPages) state.page = totalPages;
 
+      const callbackName = typeof onPageChange === 'string' ? onPageChange : onPageChange.name;
+
       return `
         <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-2 border-top">
           <div class="d-flex align-items-center mb-2 mb-md-0">
             <span class="me-2 small text-muted">Tampilkan:</span>
-            <select class="form-select form-select-sm border-success" style="width: 80px;" onchange="changePageLimit('${key}', this.value, ${onPageChange})">
+            <select class="form-select form-select-sm border-success" style="width: 80px;" onchange="changePageLimit('${key}', this.value, ${callbackName})">
               <option value="5" ${state.limit === 5 ? 'selected' : ''}>5</option>
               <option value="10" ${state.limit === 10 ? 'selected' : ''}>10</option>
               <option value="50" ${state.limit === 50 ? 'selected' : ''}>50</option>
@@ -492,13 +494,13 @@
             <nav>
               <ul class="pagination pagination-sm mb-0">
                 <li class="page-item ${state.page === 1 ? 'disabled' : ''}">
-                  <button class="page-link" onclick="goToPage('${key}', ${state.page - 1}, ${onPageChange})"><i class="bi bi-chevron-left"></i></button>
+                  <button class="page-link" onclick="goToPage('${key}', ${state.page - 1}, ${callbackName})"><i class="bi bi-chevron-left"></i></button>
                 </li>
                 <li class="page-item active">
                   <span class="page-link bg-success border-success">${state.page} / ${totalPages}</span>
                 </li>
                 <li class="page-item ${state.page === totalPages ? 'disabled' : ''}">
-                  <button class="page-link" onclick="goToPage('${key}', ${state.page + 1}, ${onPageChange})"><i class="bi bi-chevron-right"></i></button>
+                  <button class="page-link" onclick="goToPage('${key}', ${state.page + 1}, ${callbackName})"><i class="bi bi-chevron-right"></i></button>
                 </li>
               </ul>
             </nav>
@@ -3227,16 +3229,16 @@
       renderTahunAjaranTable();
     }
 
-    function renderTahunAjaranTable() {
+    window.renderTahunAjaranTable = function() {
       const paginated = paginateArray(window.rawTahunAjaranCache, 'tahunAjaran');
       let rows = '';
       let no = (window.paginationState.tahunAjaran.page - 1) * window.paginationState.tahunAjaran.limit + 1;
-    
+
       paginated.forEach(item => {
         const statusBadge = item.is_active ? 
           '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>AKTIF</span>' : 
           '<span class="badge bg-secondary">Non-Aktif</span>';
-    
+
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
@@ -3255,17 +3257,17 @@
           </tr>
         `;
       });
-    
+
       const tbody = document.getElementById('tblTahunAjaranBody');
       if (tbody) {
         tbody.innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">Belum ada data tahun ajaran di database.</td></tr>';
       }
-    
       const pagEl = document.getElementById('paginationTahunAjaran');
       if (pagEl) {
         pagEl.innerHTML = renderPaginationControls('tahunAjaran', window.rawTahunAjaranCache.length, renderTahunAjaranTable);
       }
-    }
+    };
+
     window.submitSetTahunAjaranAktif = async function(e) {
       e.preventDefault();
       const selectedDocId = document.getElementById('selectTAAktifDocId').value;
