@@ -805,6 +805,8 @@
     async function renderDashboard() {
       if (window.currentUser.role === 'guru') {
         renderDashboardGuru();
+      } else if (window.currentUser.role === 'kepalasekolah') {
+        renderKepalaReport();
       } else {
         renderDashboardWali();
       }
@@ -2115,7 +2117,7 @@
       }
 
       const containerAksi = document.getElementById('modalAksiPenangananContainer');
-      if (window.currentUser && window.currentUser.role === 'admin') {
+      if (window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'kepalasekolah')) {
         if (containerAksi) containerAksi.style.display = 'none';
       } else {
         if (containerAksi) containerAksi.style.display = 'block';
@@ -2131,7 +2133,7 @@
       const aksiPenanganan = document.getElementById('modalAksiPenanganan')?.value;
 
       try {
-        if (window.currentUser.role !== 'admin' && aksiPenanganan === 'teruskan') {
+        if (window.currentUser.role !== 'admin' && window.currentUser.role !== 'kepalasekolah' && aksiPenanganan === 'teruskan') {
           await updateDoc(doc(db, "masukan_wali", id), { status: 'Forwarded to Admin' });
           await logSystemActivity(`Guru meneruskan pertanyaan wali ke Admin`);
           alert('Pertanyaan berhasil diteruskan ke Admin / Kepala Sekolah!');
@@ -2148,6 +2150,7 @@
         bootstrap.Modal.getInstance(document.getElementById('jawabPesanModal')).hide();
         
         if (window.currentUser.role === 'admin') renderAdminModerasi();
+        else if (window.currentUser.role === 'kepalasekolah') renderKepalaReport();
         else renderGuruResponWali();
       } catch (err) {
         alert('Gagal memproses tanggapan: ' + err.message);
@@ -2194,27 +2197,33 @@
       infaqList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
       window.rawInfaqListCache = infaqList;
 
+      const isAdmin = window.currentUser.role === 'admin' || window.currentUser.role === 'superadmin';
+
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-cash-coin text-success me-2"></i> Kelola Infaq Santri (Admin)</h5>
+          <h5><i class="bi bi-cash-coin text-success me-2"></i> ${isAdmin ? 'Kelola Infaq Santri (Admin)' : 'Monitoring Infaq Santri'}</h5>
           <hr>
-          <ul class="nav nav-tabs" id="adminInfaqNav">
-            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabInputInfaq">Input Infaq</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabRekapInfaq">Rekapitulasi Infaq Santri</a></li>
-          </ul>
+          ${isAdmin ? `
+            <ul class="nav nav-tabs" id="adminInfaqNav">
+              <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabInputInfaq">Input Infaq</a></li>
+              <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabRekapInfaq">Rekapitulasi Infaq Santri</a></li>
+            </ul>
+          ` : ''}
 
           <div class="tab-content pt-3">
-            <div class="tab-pane fade show active" id="tabInputInfaq">
-              <form onsubmit="submitAdminInfaq(event)">
-                <div class="mb-3"><label class="form-label fw-bold">Pilih Santri</label><select id="adminInfaqSiswa" class="form-select border-success">${optionsInput}</select></div>
-                <div class="mb-3"><label class="form-label fw-bold">Tanggal Transaksi</label><input type="date" id="adminInfaqTgl" class="form-control" value="${new Date().toISOString().split('T')[0]}" required></div>
-                <div class="mb-3"><label class="form-label fw-bold">Nominal Infaq (Rp)</label><input type="number" id="adminInfaqJumlah" class="form-control" required placeholder="25000"></div>
-                <div class="mb-3"><label class="form-label fw-bold">Keterangan</label><input type="text" id="adminInfaqKet" class="form-control" placeholder="Infaq bulanan"></div>
-                <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i> Simpan Infaq</button>
-              </form>
-            </div>
+            ${isAdmin ? `
+              <div class="tab-pane fade show active" id="tabInputInfaq">
+                <form onsubmit="submitAdminInfaq(event)">
+                  <div class="mb-3"><label class="form-label fw-bold">Pilih Santri</label><select id="adminInfaqSiswa" class="form-select border-success">${optionsInput}</select></div>
+                  <div class="mb-3"><label class="form-label fw-bold">Tanggal Transaksi</label><input type="date" id="adminInfaqTgl" class="form-control" value="${new Date().toISOString().split('T')[0]}" required></div>
+                  <div class="mb-3"><label class="form-label fw-bold">Nominal Infaq (Rp)</label><input type="number" id="adminInfaqJumlah" class="form-control" required placeholder="25000"></div>
+                  <div class="mb-3"><label class="form-label fw-bold">Keterangan</label><input type="text" id="adminInfaqKet" class="form-control" placeholder="Infaq bulanan"></div>
+                  <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i> Simpan Infaq</button>
+                </form>
+              </div>
+            ` : ''}
 
-            <div class="tab-pane fade" id="tabRekapInfaq">
+            <div class="tab-pane fade ${isAdmin ? '' : 'show active'}" id="tabRekapInfaq">
               <div class="alert alert-success d-flex justify-content-between align-items-center mb-3">
                 <div><strong>Total Infaq Terkumpul Seluruh Lembaga:</strong></div>
                 <h4 class="mb-0 fw-bold">Rp ${totalInfaq.toLocaleString('id-ID')}</h4>
@@ -2241,7 +2250,15 @@
               <div class="table-responsive">
                 <table class="table table-sm table-bordered align-middle">
                   <thead class="table-success">
-                    <tr><th width="40" class="text-center">No</th><th>Nama Santri</th><th width="90" class="text-center">Kelas</th><th width="110" class="text-center">Tanggal</th><th class="text-end" width="130">Jumlah</th><th>Keterangan</th><th width="80" class="text-center">Aksi</th></tr>
+                    <tr>
+                      <th width="40" class="text-center">No</th>
+                      <th>Nama Santri</th>
+                      <th width="90" class="text-center">Kelas</th>
+                      <th width="110" class="text-center">Tanggal</th>
+                      <th class="text-end" width="130">Jumlah</th>
+                      <th>Keterangan</th>
+                      ${isAdmin ? '<th width="80" class="text-center">Aksi</th>' : ''}
+                    </tr>
                   </thead>
                   <tbody id="tblAdminInfaqBody"></tbody>
                 </table>
@@ -2259,6 +2276,7 @@
       const selectedKelas = document.getElementById('filterKelasAdminInfaq')?.value;
       const selectedSiswa = document.getElementById('filterSiswaAdminInfaq')?.value;
       const searchQuery = document.getElementById('searchAdminInfaqInput')?.value.toLowerCase().trim();
+      const isAdmin = window.currentUser.role === 'admin' || window.currentUser.role === 'superadmin';
 
       let filtered = window.rawInfaqListCache.filter(item => {
         const matchKelas = (selectedKelas === 'ALL' || !selectedKelas || item.id_kelas === selectedKelas);
@@ -2283,16 +2301,19 @@
             <td class="text-center">${item.tanggal}</td>
             <td class="text-end">Rp ${(Number(item.jumlah)||0).toLocaleString('id-ID')}</td>
             <td>${item.keterangan || '-'}</td>
-            <td class="text-center">
-              <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteAdminInfaq('${item.docId}')">
-                <i class="bi bi-trash"></i> Hapus
-              </button>
-            </td>
+            ${isAdmin ? `
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteAdminInfaq('${item.docId}')">
+                  <i class="bi bi-trash"></i> Hapus
+                </button>
+              </td>
+            ` : ''}
           </tr>
         `;
       });
 
-      document.getElementById('tblAdminInfaqBody').innerHTML = rows || '<tr><td colspan="7" class="text-center text-muted">Data infaq tidak ditemukan.</td></tr>';
+      const colSpanVal = isAdmin ? 7 : 6;
+      document.getElementById('tblAdminInfaqBody').innerHTML = rows || `<tr><td colspan="${colSpanVal}" class="text-center text-muted">Data infaq tidak ditemukan.</td></tr>`;
       document.getElementById('paginationInfaq').innerHTML = renderPaginationControls('infaq', filtered.length, 'filterAdminInfaqTable');
     };
 
@@ -3549,23 +3570,144 @@
       document.getElementById('paginationLogs').innerHTML = renderPaginationControls('logs', filtered.length, 'filterLogsTable');
     };
 
-    // === 5. KEPALA SEKOLAH FITUR ===
+    // === 5. KEPALA SEKOLAH FITUR (MONITORING EKSEKUTIF) ===
     async function renderKepalaReport() {
-      const snapA = await getDocs(collection(db, "absensi"));
-      const snapI = await getDocs(collection(db, "infaq"));
-      const snapM = await getDocs(collection(db, "masukan_wali"));
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Dashboard Monitoring Lembaga...`;
 
-      document.getElementById('mainContent').innerHTML = `
+      const snapSiswa = await getDocs(collection(db, "siswa"));
+      const snapGuru = await getDocs(query(collection(db, "users"), where("role", "==", "guru")));
+      const snapAbsen = await getDocs(collection(db, "absensi"));
+      const snapInfaq = await getDocs(collection(db, "infaq"));
+      const snapMasukan = await getDocs(collection(db, "masukan_wali"));
+      const snapLogs = await getDocs(collection(db, "system_logs"));
+
+      let totalInfaq = 0;
+      snapInfaq.forEach(d => { totalInfaq += Number(d.data().jumlah) || 0; });
+
+      let siswaAktif = 0;
+      snapSiswa.forEach(d => { if ((d.data().status_siswa || 'Aktif') === 'Aktif') siswaAktif++; });
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4 mb-4 border-start border-success border-4">
+          <h5><i class="bi bi-speedometer2 text-success me-2"></i> Dashboard Monitoring Eksekutif Kepala Sekolah</h5>
+          <p class="text-muted small">Ringkasan statistik global, pengawasan akademik, keuangan, dan audit aktivitas seluruh civitas akademika TPQ Al-Muawanah.</p>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card card-dashboard p-3 bg-success bg-opacity-10 border border-success">
+              <h6 class="text-success fw-bold">Total Santri Aktif</h6>
+              <h3 class="mb-0 fw-bold">${siswaAktif} Santri</h3>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-dashboard p-3 bg-primary bg-opacity-10 border border-primary">
+              <h6 class="text-primary fw-bold">Total Guru Pengajar</h6>
+              <h3 class="mb-0 fw-bold">${snapGuru.size} Guru</h3>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-dashboard p-3 bg-warning bg-opacity-10 border border-warning">
+              <h6 class="text-warning text-dark fw-bold">Akumulasi Infaq</h6>
+              <h3 class="mb-0 fw-bold text-dark fs-5">Rp ${totalInfaq.toLocaleString('id-ID')}</h3>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-dashboard p-3 bg-info bg-opacity-10 border border-info">
+              <h6 class="text-info text-dark fw-bold">Total Record Absensi</h6>
+              <h3 class="mb-0 fw-bold text-dark">${snapAbsen.size} Data</h3>
+            </div>
+          </div>
+        </div>
+
         <div class="card card-dashboard p-4">
-          <h5>Monitoring Global Lembaga TPQ</h5>
-          <hr>
-          <div class="row text-center mb-4">
-            <div class="col-md-4"><div class="p-3 border rounded bg-light"><h6>Total Record Absensi</h6><h4>${snapA.size}</h4></div></div>
-            <div class="col-md-4"><div class="p-3 border rounded bg-light"><h6>Total Transaksi Infaq</h6><h4>${snapI.size}</h4></div></div>
-            <div class="col-md-4"><div class="p-3 border rounded bg-light"><h6>Total Masukan Wali</h6><h4>${snapM.size}</h4></div></div>
+          <ul class="nav nav-tabs" id="kepalaReportTabs">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabKepalaInfaq">Monitoring Infaq Lembaga</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabKepalaMasukan">Pengawasan Pesan Wali</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabKepalaLogs">Audit Log Aktivitas Sistem</a></li>
+          </ul>
+
+          <div class="tab-content pt-3">
+            <div class="tab-pane fade show active" id="tabKepalaInfaq">
+              <div id="kepalaInfaqContainer"></div>
+            </div>
+            <div class="tab-pane fade" id="tabKepalaMasukan">
+              <div id="kepalaMasukanContainer"></div>
+            </div>
+            <div class="tab-pane fade" id="tabKepalaLogs">
+              <div id="kepalaLogsContainer"></div>
+            </div>
           </div>
         </div>
       `;
+
+      // Render Sub-konten Infaq untuk Kepala Sekolah
+      renderAdminInfaq();
+      // Pindahkan ke container kepala jika diperlukan atau gunakan fungsi render terpisah
+      setTimeout(() => {
+        const infaqTabContent = document.getElementById('tabRekapInfaq');
+        if (infaqTabContent) {
+          document.getElementById('kepalaInfaqContainer').innerHTML = infaqTabContent.innerHTML;
+        }
+        
+        // Render Pengawasan Masukan Wali
+        let masukanRows = '';
+        let noM = 1;
+        snapMasukan.forEach(d => {
+          const item = d.data();
+          masukanRows += `
+            <tr>
+              <td class="text-center">${noM++}</td>
+              <td>${item.tanggal}</td>
+              <td><strong>${item.subjek}</strong><p class="mb-0 small text-muted">${item.pesan}</p></td>
+              <td>${item.jawaban || '<em class="text-muted">Belum ditanggapi</em>'}</td>
+              <td class="text-center"><span class="badge bg-secondary">${item.status}</span></td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-success p-1 py-0" onclick="openModalJawab('${d.id}', '${encodeURIComponent(item.pesan)}', '${encodeURIComponent(item.jawaban || '')}', '${item.status}')">
+                  <i class="bi bi-reply"></i> Tanggapi / Edit
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+        document.getElementById('kepalaMasukanContainer').innerHTML = `
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th width="100">Tanggal</th><th>Pesan Wali</th><th>Tanggapan Sekolah</th><th width="110" class="text-center">Status</th><th width="130" class="text-center">Aksi</th></tr>
+              </thead>
+              <tbody>${masukanRows || '<tr><td colspan="6" class="text-center text-muted">Belum ada data masukan.</td></tr>'}</tbody>
+            </table>
+          </div>
+        `;
+
+        // Render Audit Log
+        let logRows = '';
+        let noL = 1;
+        snapLogs.forEach(d => {
+          const l = d.data();
+          logRows += `
+            <tr>
+              <td class="text-center">${noL++}</td>
+              <td><small>${new Date(l.tanggal).toLocaleString('id-ID')}</small></td>
+              <td><strong>${l.user}</strong></td>
+              <td><span class="badge bg-secondary">${l.role}</span></td>
+              <td>${l.aktivitas}</td>
+            </tr>
+          `;
+        });
+        document.getElementById('kepalaLogsContainer').innerHTML = `
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-success">
+                <tr><th width="40" class="text-center">No</th><th width="160">Waktu</th><th width="150">Pengguna</th><th width="100">Role</th><th>Aktivitas</th></tr>
+              </thead>
+              <tbody>${logRows || '<tr><td colspan="5" class="text-center text-muted">Log aktivitas kosong.</td></tr>'}</tbody>
+            </table>
+          </div>
+        `;
+      }, 300);
     }
 
     // AUTO RESTORE SESSION
