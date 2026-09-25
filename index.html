@@ -149,7 +149,7 @@
             <div id="modalPesanPreview" class="p-2 bg-light rounded border small text-secondary"></div>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-bold">Tulis Tanggapan Guru:</label>
+            <label class="form-label fw-bold">Tulis Tanggapan Guru / Sekolah:</label>
             <textarea id="modalJawabanInput" class="form-control" rows="4" placeholder="Tuliskan jawaban..." required></textarea>
           </div>
         </div>
@@ -163,19 +163,20 @@
 
   <div id="printableReportArea"></div>
 
-  <!-- FIREBASE SDK & INTEGRATED APPLICATION LOGIC -->
+  <!-- FIREBASE SDK & APPLICATION LOGIC -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
-      getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy 
+      getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // -------------------------------------------------------------
-    // FIREBASE CONFIGURATION (GANTI DENGAN MILIK ANDA)
+    // FIREBASE CONFIGURATION SESUAI PROJECT ALMUAWANAH
     // -------------------------------------------------------------
     const firebaseConfig = {
       apiKey: "AIzaSyBm560355ego5BrjjpIFQXHOEWRbNeRo5o",
       authDomain: "almuawanah-3b4a3.firebaseapp.com",
+      databaseURL: "https://almuawanah-3b4a3-default-rtdb.firebaseio.com",
       projectId: "almuawanah-3b4a3",
       storageBucket: "almuawanah-3b4a3.firebasestorage.app",
       messagingSenderId: "170719829089",
@@ -191,11 +192,6 @@
     window.currentUser = null;
     window.selectedChildId = null;
     window.activeTab = 'dashboard';
-    window.rawDashboardData = null;
-    window.rawGuruMonitoringData = null;
-    window.rawGuruNilaiData = null;
-    window.rawGuruInfaqData = null;
-    window.rawGuruCatatanResponData = null;
 
     // -------------------------------------------------------------
     // AUTHENTICATION & LOGIN
@@ -250,11 +246,6 @@
     window.logout = function(msg) {
       window.currentUser = null;
       window.selectedChildId = null;
-      window.rawDashboardData = null;
-      window.rawGuruMonitoringData = null;
-      window.rawGuruNilaiData = null;
-      window.rawGuruInfaqData = null;
-      window.rawGuruCatatanResponData = null;
       localStorage.removeItem('tpq_user');
 
       document.getElementById('appSection').style.display = 'none';
@@ -305,7 +296,6 @@
 
     window.onChildSelectionChange = function(val) {
       window.selectedChildId = val;
-      window.rawDashboardData = null;
       switchTab(window.activeTab);
     };
 
@@ -388,7 +378,7 @@
     }
 
     // -------------------------------------------------------------
-    // RENDERING FEATURES (MODUL UTAMA)
+    // RENDERING FITUR & PERBAIKAN TANYA & MASUKAN WALI
     // -------------------------------------------------------------
 
     // === 1. DASHBOARD ===
@@ -502,27 +492,28 @@
         </div>
       `;
 
-      const q = query(collection(db, "masukan_wali"), where("status", "==", "Public"));
-      const snap = await getDocs(q);
+      const snap = await getDocs(collection(db, "masukan_wali"));
       let html = '<ul class="list-group list-group-flush">';
-      if (snap.empty) html += '<li class="list-group-item text-muted">Belum ada diskusi publik.</li>';
-      else {
-        snap.forEach(d => {
-          const item = d.data();
+      let count = 0;
+      snap.forEach(d => {
+        const item = d.data();
+        if (item.status === 'Public' || item.status === 'Approved') {
+          count++;
           html += `
             <li class="list-group-item">
               <strong>Q: ${item.subjek}</strong> <small class="text-muted">(${item.tanggal})</small><br>
               <p class="mb-1 text-secondary">${item.pesan}</p>
-              ${item.jawaban ? `<div class="bg-light p-2 rounded border-start border-3 border-info"><strong>A:</strong> ${item.jawaban}</div>` : ''}
+              ${item.jawaban ? `<div class="bg-light p-2 rounded border-start border-3 border-info mt-1"><strong>A:</strong> ${item.jawaban} <small class="text-muted">(${item.answered_by || 'Sekolah'})</small></div>` : '<em class="text-muted small">Belum ada jawaban dari sekolah.</em>'}
             </li>
           `;
-        });
-      }
+        }
+      });
+      if (count === 0) html += '<li class="list-group-item text-muted">Belum ada diskusi publik.</li>';
       html += '</ul>';
       document.getElementById('publicBoard').innerHTML = html;
     }
 
-    // === 2. WALI SISWA FITUR ===
+    // === 2. WALI SISWA FITUR (PERBAIKAN TANYA & MASUKAN) ===
     function renderWaliAbsensi() {
       const activeChild = getActiveChild();
       if (!activeChild) {
@@ -584,7 +575,6 @@
         </div>
       `;
 
-      // Fetch Absensi
       const qA = query(collection(db, "absensi"), where("id_siswa", "==", activeChild.id_siswa));
       const snapA = await getDocs(qA);
       let rowsA = '';
@@ -597,7 +587,6 @@
         <tbody>${rowsA || '<tr><td colspan="3">Belum ada data.</td></tr>'}</tbody></table>
       `;
 
-      // Fetch Nilai
       const qN = query(collection(db, "nilai"), where("id_siswa", "==", activeChild.id_siswa));
       const snapN = await getDocs(qN);
       let rowsN = '';
@@ -611,17 +600,84 @@
       `;
     }
 
-    function renderWaliMasukan() {
+    async function renderWaliMasukan() {
       document.getElementById('mainContent').innerHTML = `
         <div class="card card-dashboard p-4 mb-4">
-          <h5>Tanya & Masukan Wali</h5>
+          <h5><i class="bi bi-chat-square-dots text-success me-2"></i> Form Tanya & Masukan Wali</h5>
           <form onsubmit="submitPesanWali(event)">
-            <div class="mb-3"><label class="form-label">Subjek</label><input type="text" id="subjekPesan" class="form-control" required></div>
-            <div class="mb-3"><label class="form-label">Pesan</label><textarea id="isiPesan" class="form-control" rows="3" required></textarea></div>
-            <button type="submit" class="btn btn-success">Kirim Pesan</button>
+            <div class="mb-3"><label class="form-label fw-bold">Subjek / Topik</label><input type="text" id="subjekPesan" class="form-control" required placeholder="Judul pertanyaan atau masukan"></div>
+            <div class="mb-3"><label class="form-label fw-bold">Isi Pertanyaan / Masukan</label><textarea id="isiPesan" class="form-control" rows="3" required placeholder="Tuliskan pertanyaan..."></textarea></div>
+            <button type="submit" class="btn btn-success"><i class="bi bi-send me-1"></i> Kirim Pesan</button>
           </form>
         </div>
+
+        <div class="card card-dashboard p-4">
+          <h5 class="mb-3"><i class="bi bi-table text-success me-2"></i> Tabel Pertanyaan & Jawaban Sekolah</h5>
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped align-middle">
+              <thead class="table-success">
+                <tr>
+                  <th width="50" class="text-center">No</th>
+                  <th width="30%">Pertanyaan (Subjek & Pesan)</th>
+                  <th>Jawaban dari Sekolah</th>
+                  <th width="130" class="text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody id="tblMasukanWaliBody">
+                <tr><td colspan="4" class="text-center text-muted">Memuat data pertanyaan...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       `;
+
+      loadTabelMasukanWali();
+    }
+
+    async function loadTabelMasukanWali() {
+      const snap = await getDocs(collection(db, "masukan_wali"));
+      let rows = '';
+      let no = 1;
+      const myId = window.currentUser.id_user;
+
+      snap.forEach(d => {
+        const item = d.data();
+        const isMyQuestion = (item.id_wali === myId);
+        const isPublicOrApproved = (item.status === 'Public' || item.status === 'Approved');
+
+        // Muncul jika milik sendiri ATAU sudah dijawab/dipublikasikan
+        if (isMyQuestion || isPublicOrApproved) {
+          let statusBadge = '';
+          if (item.status === 'Pending') statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+          else if (item.status === 'Approved') statusBadge = '<span class="badge bg-info text-dark">Approved</span>';
+          else if (item.status === 'Public') statusBadge = '<span class="badge bg-success">Public</span>';
+          else statusBadge = `<span class="badge bg-secondary">${item.status}</span>`;
+
+          let pertanyaanHtml = `
+            <strong>${item.subjek}</strong> <small class="text-muted">(${item.tanggal})</small>
+            <p class="mb-0 text-secondary small">${item.pesan}</p>
+            ${isMyQuestion ? '<span class="badge bg-light text-dark border mt-1" style="font-size:0.7rem;">Pertanyaan Saya</span>' : ''}
+          `;
+
+          let jawabanHtml = item.jawaban ? 
+            `<div class="text-dark small">${item.jawaban}</div><small class="text-muted" style="font-size:0.75rem;">Dijawab oleh: <strong>${item.answered_by || 'Sekolah'}</strong></small>` : 
+            '<em class="text-muted small">Belum ada jawaban dari sekolah.</em>';
+
+          rows += `
+            <tr>
+              <td class="text-center">${no++}</td>
+              <td>${pertanyaanHtml}</td>
+              <td>${jawabanHtml}</td>
+              <td class="text-center">${statusBadge}</td>
+            </tr>
+          `;
+        }
+      });
+
+      const tbody = document.getElementById('tblMasukanWaliBody');
+      if (tbody) {
+        tbody.innerHTML = rows || '<tr><td colspan="4" class="text-center text-muted">Belum ada pertanyaan atau masukan.</td></tr>';
+      }
     }
 
     window.submitPesanWali = async function(e) {
@@ -636,8 +692,8 @@
           jawaban: '',
           answered_by: ''
         });
-        alert('Masukan berhasil dikirim! Menunggu moderasi Admin.');
-        switchTab('dashboard');
+        alert('Masukan berhasil dikirim! Menunggu tanggapan dari sekolah.');
+        switchTab('waliMasukan');
       } catch (err) {
         alert('Gagal mengirim: ' + err.message);
       }
@@ -764,21 +820,22 @@
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Masukan...`;
 
-      const q = query(collection(db, "masukan_wali"), where("status", "==", "Approved"));
-      const snap = await getDocs(q);
+      const snap = await getDocs(collection(db, "masukan_wali"));
 
       let rows = '';
       snap.forEach(d => {
         const item = d.data();
-        rows += `
-          <tr>
-            <td>${item.tanggal}</td>
-            <td>${item.subjek}</td>
-            <td>${item.pesan}</td>
-            <td>${item.jawaban || '<em>Belum dijawab</em>'}</td>
-            <td><button class="btn btn-sm btn-outline-success" onclick="openModalJawab('${d.id}', '${encodeURIComponent(item.pesan)}')">Jawab</button></td>
-          </tr>
-        `;
+        if (item.status === 'Approved' || item.status === 'Public' || item.status === 'Pending') {
+          rows += `
+            <tr>
+              <td>${item.tanggal}</td>
+              <td>${item.subjek}</td>
+              <td>${item.pesan}</td>
+              <td>${item.jawaban || '<em>Belum dijawab</em>'}</td>
+              <td><button class="btn btn-sm btn-outline-success" onclick="openModalJawab('${d.id}', '${encodeURIComponent(item.pesan)}')">Jawab</button></td>
+            </tr>
+          `;
+        }
       });
 
       main.innerHTML = `
@@ -786,7 +843,7 @@
           <h5>Pertanyaan & Masukan Wali Santri</h5>
           <table class="table table-bordered align-middle mt-3">
             <thead class="table-success"><tr><th>Tanggal</th><th>Subjek</th><th>Pesan</th><th>Jawaban</th><th>Aksi</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="5">Belum ada masukan approved.</td></tr>'}</tbody>
+            <tbody>${rows || '<tr><td colspan="5">Belum ada masukan wali.</td></tr>'}</tbody>
           </table>
         </div>
       `;
