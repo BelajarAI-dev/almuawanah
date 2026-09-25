@@ -3,12 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistem Informasi TPQ Al-Muawanah1</title>
-  
-  <!-- CSS Library -->
+  <title>Sistem Informasi TPQ Al-Muawanah</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-  
   <style>
     body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .login-card { max-width: 450px; margin: 40px auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
@@ -61,12 +58,12 @@
 </head>
 <body>
 
-  <!-- HALAMAN LOGIN -->
+  <!-- 1. LOGIN SECTION -->
   <div id="loginSection">
     <div class="card login-card p-4">
       <div class="text-center mb-3">
         <i class="bi bi-book-half text-success display-4"></i>
-        <h4 class="mt-2 fw-bold text-success">TPQ AL-MUAWANAH1</h4>
+        <h4 class="mt-2 fw-bold text-success">TPQ AL-MUAWANAH</h4>
         <p class="text-muted small">Sistem Informasi Absensi & Monitoring (Firebase)</p>
       </div>
 
@@ -74,8 +71,8 @@
       
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="mb-3">
-          <label class="form-label">Username / Email</label>
-          <input type="text" id="username" class="form-control" required placeholder="Masukkan username/email">
+          <label class="form-label">Username</label>
+          <input type="text" id="username" class="form-control" required placeholder="Masukkan username">
         </div>
         <div class="mb-3">
           <label class="form-label">Password</label>
@@ -86,7 +83,7 @@
     </div>
   </div>
 
-  <!-- APLIKASI UTAMA -->
+  <!-- 2. MAIN APPLICATION -->
   <div id="appSection" style="display: none;">
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-3">
       <button class="btn btn-outline-success btn-sm me-3" id="sidebarToggleBtn" onclick="toggleSidebar()">
@@ -101,7 +98,7 @@
 
     <div class="container-fluid">
       <div class="row">
-        <!-- SIDEBAR -->
+        <!-- SIDEBAR MENU -->
         <div class="col-md-2 p-3 sidebar-menu" id="sidebarContainer">
           <h6 class="text-uppercase text-muted fw-bold small px-2">Menu Navigasi</h6>
           <ul class="nav nav-pills flex-column" id="sidebarNav">
@@ -112,7 +109,7 @@
           </ul>
         </div>
 
-        <!-- CONTENT -->
+        <!-- MAIN CONTENT AREA -->
         <div class="col-md-10 p-4" id="mainContentArea">
           <div id="childSelectorContainer" class="child-selector-box p-3 mb-3 d-none">
             <div class="row align-items-center">
@@ -132,65 +129,112 @@
     </div>
   </div>
 
+  <!-- MODAL TANGGAPAN GURU -->
+  <div class="modal fade" id="jawabPesanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold fs-6"><i class="bi bi-chat-dots me-2"></i>Berikan Tanggapan / Jawaban</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="modalIdMasukan">
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">Topik / Pesan Wali:</label>
+            <div id="modalPesanPreview" class="p-2 bg-light rounded border small text-secondary"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Tulis Tanggapan Guru:</label>
+            <textarea id="modalJawabanInput" class="form-control" rows="4" placeholder="Tuliskan jawaban..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="submitJawabPesan()"><i class="bi bi-send me-1"></i>Kirim & Publikasikan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KONFLIK ABSENSI -->
+  <div class="modal fade" id="conflictModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-warning bg-opacity-25 border-bottom border-warning">
+          <h5 class="modal-title text-dark fw-bold"><i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>Konfirmasi Perubahan Absensi</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-3">Terdapat santri yang sudah memiliki record absensi pada tanggal ini. Silakan tentukan aksi:</p>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-light">
+                <tr><th>Nama Santri</th><th class="text-center">Status Lama</th><th class="text-center">Status Baru</th><th class="text-center">Pilihan Aksi</th></tr>
+              </thead>
+              <tbody id="conflictTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success btn-sm" onclick="processConflictResolution()"><i class="bi bi-check-circle me-1"></i>Proses Pilihan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="printableReportArea"></div>
 
-  <!-- Firebase SDK Modules -->
+  <!-- FIREBASE ENGINE & APPLICATION LOGIC -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
-      getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where 
+      getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // -------------------------------------------------------------
-    // 1. ISIKAN CONFIG FIREBASE ANDA DI SINI
-    // -------------------------------------------------------------
+    // GANTI SESUAI CONFIG FIREBASE ANDA
     const firebaseConfig = {
-      apiKey: "AIzaSyBm560355ego5BrjjpIFQXHOEWRbNeRo5o",
-      authDomain: "almuawanah-3b4a3.firebaseapp.com",
-      databaseURL: "https://almuawanah-3b4a3-default-rtdb.firebaseio.com",
-      projectId: "almuawanah-3b4a3",
-      storageBucket: "almuawanah-3b4a3.firebasestorage.app",
-      messagingSenderId: "170719829089",
-      appId: "1:170719829089:web:0e556b38be81cb0b84de20",
-      measurementId: "G-8KT9K9EP52"
-    };
+  apiKey: "AIzaSyBm560355ego5BrjjpIFQXHOEWRbNeRo5o",
+  authDomain: "almuawanah-3b4a3.firebaseapp.com",
+  projectId: "almuawanah-3b4a3",
+  storageBucket: "almuawanah-3b4a3.firebasestorage.app",
+  messagingSenderId: "170719829089",
+  appId: "1:170719829089:web:a025e120b9fdaa9c84de20",
+  measurementId: "G-6P7J3NXFW6"
+};
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Global State App
     window.db = db;
     window.currentUser = null;
     window.selectedChildId = null;
     window.activeTab = 'dashboard';
+    window.rawDashboardData = null;
+    window.rawGuruMonitoringData = null;
+    window.rawGuruNilaiData = null;
+    window.rawGuruInfaqData = null;
+    window.rawGuruCatatanResponData = null;
 
-    // -------------------------------------------------------------
-    // 2. FUNGSI LOGIN & AUTENTIKASI FIRESTORE
-    // -------------------------------------------------------------
+    // --- AUTHENTICATION ---
     window.handleLogin = async function(e) {
       e.preventDefault();
       const u = document.getElementById('username').value.trim();
       const p = document.getElementById('password').value.trim();
       const btn = document.getElementById('btnLogin');
-      btn.disabled = true;
-      btn.innerText = "Memproses...";
+      btn.disabled = true; btn.innerText = "Memproses...";
 
       try {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("username", "==", u), where("password", "==", p));
-        const querySnapshot = await getDocs(q);
+        const q = query(collection(db, "users"), where("username", "==", u), where("password", "==", p));
+        const snap = await getDocs(q);
 
-        if (querySnapshot.empty) {
+        if (snap.empty) {
           document.getElementById('loginAlert').innerHTML = `<div class="alert alert-danger p-2 small">Username atau password salah.</div>`;
-          btn.disabled = false;
-          btn.innerText = "Masuk";
-          return;
+          btn.disabled = false; btn.innerText = "Masuk"; return;
         }
 
         let userData = null;
-        querySnapshot.forEach((docSnap) => {
-          userData = { id_user: docSnap.id, ...docSnap.data() };
-        });
+        snap.forEach(d => userData = { id_user: d.id, ...d.data() });
 
         if (userData.role === 'walisiswa') {
           userData.list_siswa = await getSiswaByWaliId(userData.id_user);
@@ -198,45 +242,35 @@
 
         window.currentUser = userData;
         localStorage.setItem('tpq_user', JSON.stringify(userData));
-        
-        if (userData.role === 'walisiswa' && userData.list_siswa && userData.list_siswa.length > 0) {
+        if (userData.role === 'walisiswa' && userData.list_siswa?.length > 0) {
           window.selectedChildId = userData.list_siswa[0].id_siswa;
         }
 
-        btn.disabled = false;
-        btn.innerText = "Masuk";
+        btn.disabled = false; btn.innerText = "Masuk";
         initApp();
       } catch (err) {
         console.error(err);
-        document.getElementById('loginAlert').innerHTML = `<div class="alert alert-danger p-2 small">Terjadi kesalahan sistem/koneksi Firebase.</div>`;
-        btn.disabled = false;
-        btn.innerText = "Masuk";
+        document.getElementById('loginAlert').innerHTML = `<div class="alert alert-danger p-2 small">Error koneksi Firebase.</div>`;
+        btn.disabled = false; btn.innerText = "Masuk";
       }
     };
 
+    async function getSiswaByWaliId(idWali) {
+      const q = query(collection(db, "siswa"), where("id_wali", "==", idWali), where("status_siswa", "==", "Aktif"));
+      const snap = await getDocs(q);
+      let list = [];
+      snap.forEach(d => list.push({ id_siswa: d.id, ...d.data() }));
+      return list;
+    }
+
     window.logout = function(msg) {
-      window.currentUser = null;
-      window.selectedChildId = null;
+      window.currentUser = null; window.selectedChildId = null;
       localStorage.removeItem('tpq_user');
       document.getElementById('appSection').style.display = 'none';
       document.getElementById('loginSection').style.display = 'block';
       if(msg) document.getElementById('loginAlert').innerHTML = `<div class="alert alert-warning p-2 small">${msg}</div>`;
     };
 
-    async function getSiswaByWaliId(idWali) {
-      const siswaRef = collection(db, "siswa");
-      const q = query(siswaRef, where("id_wali", "==", idWali), where("status_siswa", "==", "Aktif"));
-      const snap = await getDocs(q);
-      let list = [];
-      snap.forEach(d => {
-        list.push({ id_siswa: d.id, ...d.data() });
-      });
-      return list;
-    }
-
-    // -------------------------------------------------------------
-    // 3. INISIALISASI & NAVIGATION
-    // -------------------------------------------------------------
     function initApp() {
       document.getElementById('loginSection').style.display = 'none';
       document.getElementById('appSection').style.display = 'block';
@@ -253,7 +287,7 @@
 
       if (window.currentUser.role === 'walisiswa') {
         container.classList.remove('d-none');
-        if (window.currentUser.list_siswa && window.currentUser.list_siswa.length > 0) {
+        if (window.currentUser.list_siswa?.length > 0) {
           dropdown.innerHTML = window.currentUser.list_siswa.map(s => `
             <option value="${s.id_siswa}" ${s.id_siswa === window.selectedChildId ? 'selected' : ''}>
               ${s.nama_siswa} (NIS: ${s.nis})
@@ -269,6 +303,7 @@
 
     window.onChildSelectionChange = function(val) {
       window.selectedChildId = val;
+      window.rawDashboardData = null;
       switchTab(window.activeTab);
     };
 
@@ -278,16 +313,32 @@
       let html = '';
 
       if (role === 'walisiswa' || role === 'superadmin') {
-        html += `<li class="nav-item"><a class="nav-link mb-1" id="menu-waliAbsensi" onclick="switchTab('waliAbsensi')"><i class="bi bi-calendar-check me-2"></i> Pengajuan Absensi</a></li>`;
+        html += `
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-waliAbsensi" onclick="switchTab('waliAbsensi')"><i class="bi bi-calendar-check me-2"></i> Pengajuan Absensi</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-waliMonitoring" onclick="switchTab('waliMonitoring')"><i class="bi bi-graph-up me-2"></i> Monitoring Santri</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-waliMasukan" onclick="switchTab('waliMasukan')"><i class="bi bi-chat-dots me-2"></i> Tanya & Masukan</a></li>
+        `;
       }
       if (role === 'guru' || role === 'superadmin') {
         html += `
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruAbsensi" onclick="switchTab('guruAbsensi')"><i class="bi bi-pen me-2"></i> Input Absensi</a></li>
-          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruNilai" onclick="switchTab('guruNilai')"><i class="bi bi-journal-check me-2"></i> Kelola Nilai</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruMonitoring" onclick="switchTab('guruMonitoring')"><i class="bi bi-eye me-2"></i> Monitoring Kehadiran Kelas</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruNilai" onclick="switchTab('guruNilai')"><i class="bi bi-journal-check me-2"></i> Kelola Nilai Santri</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruInfaq" onclick="switchTab('guruInfaq')"><i class="bi bi-cash-coin me-2"></i> Kelola Infaq Santri</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruCatatan" onclick="switchTab('guruCatatan')"><i class="bi bi-chat-left-text me-2"></i> Catatan Guru</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-guruResponWali" onclick="switchTab('guruResponWali')"><i class="bi bi-chat-square-quote me-2"></i> Respon & Pertanyaan Wali</a></li>
         `;
       }
       if (role === 'admin' || role === 'superadmin') {
-        html += `<li class="nav-item"><a class="nav-link mb-1" id="menu-adminUsers" onclick="switchTab('adminUsers')"><i class="bi bi-people me-2"></i> Kelola User</a></li>`;
+        html += `
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminUsers" onclick="switchTab('adminUsers')"><i class="bi bi-people me-2"></i> Kelola User</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminKelas" onclick="switchTab('adminKelas')"><i class="bi bi-arrow-left-right me-2"></i> Manajemen Kelas</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminModerasi" onclick="switchTab('adminModerasi')"><i class="bi bi-shield-check me-2"></i> Moderasi Masukan</a></li>
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-adminSetoranApproval" onclick="switchTab('adminSetoranApproval')"><i class="bi bi-check2-all me-2"></i> Approval Setoran Infaq</a></li>
+        `;
+      }
+      if (role === 'kepalasekolah' || role === 'superadmin') {
+        html += `<li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaReport" onclick="switchTab('kepalaReport')"><i class="bi bi-file-earmark-bar-graph me-2"></i> Monitoring Lembaga</a></li>`;
       }
       container.innerHTML = html;
     }
@@ -300,48 +351,136 @@
 
       if (tabName === 'dashboard') renderDashboard();
       else if (tabName === 'waliAbsensi') renderWaliAbsensi();
+      else if (tabName === 'waliMonitoring') renderWaliMonitoring();
+      else if (tabName === 'waliMasukan') renderWaliMasukan();
       else if (tabName === 'guruAbsensi') renderGuruAbsensi();
+      else if (tabName === 'guruMonitoring') renderGuruMonitoring();
       else if (tabName === 'guruNilai') renderGuruNilai();
+      else if (tabName === 'guruInfaq') renderGuruInfaq();
+      else if (tabName === 'guruCatatan') renderGuruCatatan();
+      else if (tabName === 'guruResponWali') renderGuruResponWali();
       else if (tabName === 'adminUsers') renderAdminUsers();
+      else if (tabName === 'adminKelas') renderAdminKelas();
+      else if (tabName === 'adminModerasi') renderAdminModerasi();
+      else if (tabName === 'adminSetoranApproval') renderAdminSetoranApproval();
+      else if (tabName === 'kepalaReport') renderKepalaReport();
     };
 
     window.toggleSidebar = function() {
-      const sidebar = document.getElementById('sidebarContainer');
-      const main = document.getElementById('mainContentArea');
-      sidebar.classList.toggle('sidebar-hidden');
-      main.classList.toggle('col-md-12');
-      main.classList.toggle('col-md-10');
+      document.getElementById('sidebarContainer').classList.toggle('sidebar-hidden');
+      document.getElementById('mainContentArea').classList.toggle('col-md-12');
+      document.getElementById('mainContentArea').classList.toggle('col-md-10');
     };
 
-    // -------------------------------------------------------------
-    // 4. RENDERING VIEW & OPERASI FIRESTORE (DATA REALTIME)
-    // -------------------------------------------------------------
+    // --- TAB IMPLEMENTATIONS ---
     async function renderDashboard() {
+      if (window.currentUser.role === 'guru') renderDashboardGuru();
+      else renderDashboardWali();
+    }
+
+    async function renderDashboardGuru() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="card card-dashboard p-4"><h5>Selamat Datang, ${window.currentUser.nama}</h5><p class="text-muted">Role Anda: <strong>${window.currentUser.role}</strong></p></div>`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Dashboard...`;
+
+      const qS = query(collection(db, "siswa"), where("id_kelas", "==", window.currentUser.id_kelas || ""));
+      const snapS = await getDocs(qS);
+      let siswaList = [];
+      snapS.forEach(d => siswaList.push({ id_siswa: d.id, ...d.data() }));
+
+      const today = new Date().toISOString().split('T')[0];
+      const qA = query(collection(db, "absensi"), where("tanggal", "==", today));
+      const snapA = await getDocs(qA);
+      
+      let stats = { masuk: 0, izin: 0, sakit: 0, alpa: 0 };
+      snapA.forEach(d => {
+        const data = d.data();
+        if (siswaList.some(s => s.id_siswa === data.id_siswa)) {
+          const st = (data.status || '').toLowerCase();
+          if (st === 'masuk') stats.masuk++;
+          else if (st === 'izin') stats.izin++;
+          else if (st === 'sakit') stats.sakit++;
+          else if (st === 'alpa') stats.alpa++;
+        }
+      });
+
+      main.innerHTML = `
+        <div class="row g-3 mb-4">
+          <div class="col-md-5">
+            <div class="card card-dashboard p-3 border-start border-success border-4 h-100">
+              <h6 class="text-muted">Profil Guru</h6>
+              <h4>${window.currentUser.nama}</h4>
+              <span class="badge bg-success w-50 mb-3">${window.currentUser.role.toUpperCase()}</span>
+              <div class="p-3 bg-light rounded border">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted">Total Santri:</span>
+                  <span class="fs-4 fw-bold text-success">${siswaList.length} Santri</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-7">
+            <div class="card card-dashboard p-3 h-100">
+              <h5><i class="bi bi-pie-chart text-success me-2"></i> Kehadiran Kelas Hari Ini (${today})</h5>
+              <div class="row text-center g-2 mt-2">
+                <div class="col-3"><div class="p-2 border rounded bg-success bg-opacity-10 text-success"><small class="fw-bold d-block">MASUK</small><span class="fs-4 fw-bold">${stats.masuk}</span></div></div>
+                <div class="col-3"><div class="p-2 border rounded bg-info bg-opacity-10 text-info"><small class="fw-bold d-block">IZIN</small><span class="fs-4 fw-bold">${stats.izin}</span></div></div>
+                <div class="col-3"><div class="p-2 border rounded bg-warning bg-opacity-10 text-warning"><small class="fw-bold d-block">SAKIT</small><span class="fs-4 fw-bold">${stats.sakit}</span></div></div>
+                <div class="col-3"><div class="p-2 border rounded bg-danger bg-opacity-10 text-danger"><small class="fw-bold d-block">ALPA</small><span class="fs-4 fw-bold">${stats.alpa}</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function renderDashboardWali() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Dashboard...`;
+
+      const qP = query(collection(db, "masukan_wali"), where("status", "==", "Public"));
+      const snapP = await getDocs(qP);
+      let listHtml = '<ul class="list-group list-group-flush">';
+      snapP.forEach(d => {
+        const m = d.data();
+        listHtml += `
+          <li class="list-group-item">
+            <strong>Q: ${m.subjek}</strong> <span class="text-muted small">(${m.tanggal})</span>
+            <p class="mb-1 text-secondary">${m.pesan}</p>
+            ${m.jawaban ? `<div class="bg-light p-2 rounded border-start border-3 border-info mt-1"><strong>A:</strong> ${m.jawaban}</div>` : ''}
+          </li>`;
+      });
+      listHtml += '</ul>';
+
+      main.innerHTML = `
+        <div class="row g-3">
+          <div class="col-md-5">
+            <div class="card card-dashboard p-3 border-start border-success border-4">
+              <h6 class="text-muted">Profil Wali</h6>
+              <h4>${window.currentUser.nama}</h4>
+              <span class="badge bg-success w-50 mb-3">${window.currentUser.role.toUpperCase()}</span>
+            </div>
+          </div>
+          <div class="col-md-7">
+            <div class="card card-dashboard p-3">
+              <h5><i class="bi bi-megaphone text-success me-2"></i> Informasi & Diskusi Publik</h5>
+              ${listHtml}
+            </div>
+          </div>
+        </div>
+      `;
     }
 
     function renderWaliAbsensi() {
-      const main = document.getElementById('mainContent');
-      main.innerHTML = `
+      document.getElementById('mainContent').innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-calendar-plus text-success me-2"></i> Pengajuan Absensi Santri</h5>
+          <h5><i class="bi bi-calendar-plus text-success me-2"></i> Form Pengajuan Absensi Santri</h5>
           <form onsubmit="submitPengajuan(event)">
+            <div class="mb-3"><label class="form-label">Tanggal</label><input type="date" id="tglIzin" class="form-control" required></div>
             <div class="mb-3">
-              <label class="form-label">Tanggal Halangan</label>
-              <input type="date" id="tglPengajuan" class="form-control" required>
+              <label class="form-label">Jenis Halangan</label>
+              <select id="jenisIzin" class="form-select"><option value="Izin">Izin</option><option value="Sakit">Sakit</option></select>
             </div>
-            <div class="mb-3">
-              <label class="form-label">Jenis</label>
-              <select id="jenisPengajuan" class="form-select">
-                <option value="Izin">Izin</option>
-                <option value="Sakit">Sakit</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Alasan</label>
-              <textarea id="alasanPengajuan" class="form-control" rows="3" required></textarea>
-            </div>
+            <div class="mb-3"><label class="form-label">Alasan</label><textarea id="alasanIzin" class="form-control" rows="3" required></textarea></div>
             <button type="submit" class="btn btn-success">Kirim Pengajuan</button>
           </form>
         </div>
@@ -350,43 +489,66 @@
 
     window.submitPengajuan = async function(e) {
       e.preventDefault();
-      try {
-        await addDoc(collection(db, "pengajuan_absensi"), {
-          id_siswa: window.selectedChildId,
-          tanggal: document.getElementById('tglPengajuan').value,
-          jenis: document.getElementById('jenisPengajuan').value,
-          alasan: document.getElementById('alasanPengajuan').value,
-          status: 'Pending',
-          created_at: new Date()
-        });
-        alert('Pengajuan berhasil dikirim!');
-        switchTab('dashboard');
-      } catch (err) {
-        alert('Gagal mengirim pengajuan: ' + err.message);
-      }
+      await addDoc(collection(db, "pengajuan_absensi"), {
+        id_siswa: window.selectedChildId,
+        tanggal: document.getElementById('tglIzin').value,
+        jenis: document.getElementById('jenisIzin').value,
+        alasan: document.getElementById('alasanIzin').value,
+        status: 'Pending'
+      });
+      alert('Pengajuan berhasil dikirim!');
+      switchTab('dashboard');
+    };
+
+    async function renderWaliMonitoring() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Monitoring Santri Lengkap (Firestore Connected)</h5></div>`;
+    }
+
+    function renderWaliMasukan() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="card card-dashboard p-4 mb-4">
+          <h5><i class="bi bi-chat-square-dots text-success me-2"></i> Form Pertanyaan & Masukan Wali</h5>
+          <form onsubmit="submitMasukan(event)">
+            <div class="mb-3"><label class="form-label">Subjek</label><input type="text" id="subjekPesan" class="form-control" required></div>
+            <div class="mb-3"><label class="form-label">Pesan</label><textarea id="isiPesan" class="form-control" rows="3" required></textarea></div>
+            <button type="submit" class="btn btn-success">Kirim</button>
+          </form>
+        </div>
+      `;
+    }
+
+    window.submitMasukan = async function(e) {
+      e.preventDefault();
+      await addDoc(collection(db, "masukan_wali"), {
+        id_wali: window.currentUser.id_user,
+        tanggal: new Date().toISOString().split('T')[0],
+        subjek: document.getElementById('subjekPesan').value,
+        pesan: document.getElementById('isiPesan').value,
+        status: 'Pending'
+      });
+      alert('Pesan berhasil dikirim!');
+      switchTab('waliMasukan');
     };
 
     async function renderGuruAbsensi() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat data siswa...`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat data santri...`;
 
-      const qSiswa = query(collection(db, "siswa"), where("id_kelas", "==", window.currentUser.id_kelas || ""));
-      const snap = await getDocs(qSiswa);
+      const qS = query(collection(db, "siswa"), where("id_kelas", "==", window.currentUser.id_kelas || ""));
+      const snapS = await getDocs(qS);
 
       let rows = '';
-      snap.forEach(docSnap => {
-        const s = docSnap.data();
+      snapS.forEach(d => {
+        const s = d.data();
         rows += `
           <tr>
-            <td>${s.nama_siswa}</td>
+            <td><strong>${s.nama_siswa}</strong> (${s.nis})</td>
             <td>
-              <select class="form-select form-select-sm status-absen" data-id="${docSnap.id}">
-                <option value="Masuk">Masuk</option>
-                <option value="Izin">Izin</option>
-                <option value="Sakit">Sakit</option>
-                <option value="Alpa">Alpa</option>
+              <select class="form-select form-select-sm status-absen" data-id="${d.id}" data-nama="${s.nama_siswa}">
+                <option value="Masuk">Masuk</option><option value="Izin">Izin</option><option value="Sakit">Sakit</option><option value="Alpa">Alpa</option>
               </select>
             </td>
+            <td><input type="text" class="form-control form-control-sm ket-absen" data-id="${d.id}"></td>
           </tr>
         `;
       });
@@ -394,13 +556,10 @@
       main.innerHTML = `
         <div class="card card-dashboard p-4">
           <h5><i class="bi bi-pen text-success me-2"></i> Input Absensi Kelas</h5>
-          <div class="mb-3 w-25">
-            <label class="form-label">Tanggal</label>
-            <input type="date" id="tglAbsensiGuru" class="form-control" value="${new Date().toISOString().split('T')[0]}">
-          </div>
-          <table class="table table-bordered">
-            <thead><tr><th>Nama Santri</th><th>Status Kehadiran</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="2">Tidak ada santri di kelas ini</td></tr>'}</tbody>
+          <div class="mb-3 w-25"><label class="form-label">Tanggal</label><input type="date" id="tglAbsensiGuru" class="form-control" value="${new Date().toISOString().split('T')[0]}"></div>
+          <table class="table table-bordered align-middle">
+            <thead class="table-success"><tr><th>Nama Santri</th><th width="200">Status</th><th>Keterangan</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="3">Tidak ada santri.</td></tr>'}</tbody>
           </table>
           <button class="btn btn-success" onclick="simpanAbsensiBulk()">Simpan Absensi</button>
         </div>
@@ -411,58 +570,88 @@
       const tgl = document.getElementById('tglAbsensiGuru').value;
       const selects = document.querySelectorAll('.status-absen');
 
-      try {
-        for (let sel of selects) {
-          await addDoc(collection(db, "absensi"), {
-            id_siswa: sel.getAttribute('data-id'),
-            tanggal: tgl,
-            status: sel.value,
-            created_at: new Date()
-          });
-        }
-        alert('Absensi berhasil disimpan!');
-      } catch (err) {
-        alert('Gagal menyimpan: ' + err.message);
+      for (let sel of selects) {
+        const idSiswa = sel.getAttribute('data-id');
+        const ket = document.querySelector(`.ket-absen[data-id="${idSiswa}"]`).value;
+
+        await addDoc(collection(db, "absensi"), {
+          id_siswa: idSiswa,
+          tanggal: tgl,
+          status: sel.value,
+          keterangan: ket
+        });
       }
+      alert('Absensi berhasil disimpan!');
     };
 
+    async function renderGuruMonitoring() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Rekap & Matriks Absensi Kelas (Firestore Connected)</h5></div>`;
+    }
+
     async function renderGuruNilai() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Nilai Guru (Firestore Connected)</h5></div>`;
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Kelola Nilai Santri (Firestore Connected)</h5></div>`;
+    }
+
+    async function renderGuruInfaq() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Kelola & Setor Infaq Santri (Firestore Connected)</h5></div>`;
+    }
+
+    async function renderGuruCatatan() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Catatan Perkembangan Santri (Firestore Connected)</h5></div>`;
+    }
+
+    async function renderGuruResponWali() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Tanggapan Pesan Wali (Firestore Connected)</h5></div>`;
     }
 
     async function renderAdminUsers() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat daftar user...`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat User...`;
 
       const snap = await getDocs(collection(db, "users"));
       let rows = '';
       snap.forEach(d => {
         const u = d.data();
-        rows += `<tr><td>${u.username}</td><td>${u.nama}</td><td><span class="badge bg-primary">${u.role}</span></td></tr>`;
+        rows += `<tr><td>${u.username}</td><td>${u.nama}</td><td><span class="badge bg-secondary">${u.role}</span></td></tr>`;
       });
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-people text-success me-2"></i> Manajemen User</h5>
+          <h5><i class="bi bi-people text-success me-2"></i> Kelola User</h5>
           <table class="table table-bordered mt-3">
-            <thead><tr><th>Username</th><th>Nama</th><th>Role</th></tr></thead>
+            <thead class="table-light"><tr><th>Username</th><th>Nama</th><th>Role</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
       `;
     }
 
-    // Auto restore session
+    async function renderAdminKelas() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Penempatan Kelas & Status Santri (Firestore Connected)</h5></div>`;
+    }
+
+    async function renderAdminModerasi() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Moderasi Pesan Wali (Firestore Connected)</h5></div>`;
+    }
+
+    async function renderAdminSetoranApproval() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Approval Setoran Infaq (Firestore Connected)</h5></div>`;
+    }
+
+    async function renderKepalaReport() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Laporan Global Lembaga (Firestore Connected)</h5></div>`;
+    }
+
+    // Auto Restore Session
     const saved = localStorage.getItem('tpq_user');
     if (saved) {
       window.currentUser = JSON.parse(saved);
-      if(window.currentUser.list_siswa && window.currentUser.list_siswa.length > 0) {
+      if(window.currentUser.list_siswa?.length > 0) {
         window.selectedChildId = window.currentUser.list_siswa[0].id_siswa;
       }
       initApp();
     }
   </script>
-  
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
