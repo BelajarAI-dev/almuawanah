@@ -4,8 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistem Informasi TPQ Al-Muawanah</title>
+  
+  <!-- CSS Library -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  
   <style>
     body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .login-card { max-width: 450px; margin: 40px auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
@@ -58,7 +61,7 @@
 </head>
 <body>
 
-  <!-- 1. LOGIN SECTION -->
+  <!-- 1. HALAMAN LOGIN -->
   <div id="loginSection">
     <div class="card login-card p-4">
       <div class="text-center mb-3">
@@ -71,7 +74,7 @@
       
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="mb-3">
-          <label class="form-label">Username</label>
+          <label class="form-label">Username / Email</label>
           <input type="text" id="username" class="form-control" required placeholder="Masukkan username">
         </div>
         <div class="mb-3">
@@ -83,13 +86,15 @@
     </div>
   </div>
 
-  <!-- 2. MAIN APPLICATION -->
+  <!-- 2. MAIN APPLICATION CONTAINER -->
   <div id="appSection" style="display: none;">
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-3">
       <button class="btn btn-outline-success btn-sm me-3" id="sidebarToggleBtn" onclick="toggleSidebar()">
         <i class="bi bi-list fs-5"></i>
       </button>
+      
       <a class="navbar-brand" href="javascript:void(0)"><i class="bi bi-journal-check"></i> TPQ AL-MUAWANAH</a>
+      
       <div class="ms-auto d-flex align-items-center">
         <span class="me-3 badge bg-light text-dark p-2 border" id="userBadge">Role: -</span>
         <button class="btn btn-outline-danger btn-sm" onclick="logout('Pengguna keluar.')"><i class="bi bi-box-arrow-right"></i> Keluar</button>
@@ -129,7 +134,7 @@
     </div>
   </div>
 
-  <!-- MODAL TANGGAPAN GURU -->
+  <!-- MODAL JAWABAN GURU UNTUK WALI -->
   <div class="modal fade" id="jawabPesanModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -156,56 +161,32 @@
     </div>
   </div>
 
-  <!-- MODAL KONFLIK ABSENSI -->
-  <div class="modal fade" id="conflictModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content">
-        <div class="modal-header bg-warning bg-opacity-25 border-bottom border-warning">
-          <h5 class="modal-title text-dark fw-bold"><i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>Konfirmasi Perubahan Absensi</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p class="small text-muted mb-3">Terdapat santri yang sudah memiliki record absensi pada tanggal ini. Silakan tentukan aksi:</p>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-              <thead class="table-light">
-                <tr><th>Nama Santri</th><th class="text-center">Status Lama</th><th class="text-center">Status Baru</th><th class="text-center">Pilihan Aksi</th></tr>
-              </thead>
-              <tbody id="conflictTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-          <button type="button" class="btn btn-success btn-sm" onclick="processConflictResolution()"><i class="bi bi-check-circle me-1"></i>Proses Pilihan</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div id="printableReportArea"></div>
 
-  <!-- FIREBASE ENGINE & APPLICATION LOGIC -->
+  <!-- FIREBASE SDK & INTEGRATED APPLICATION LOGIC -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
       getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, orderBy 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // GANTI SESUAI CONFIG FIREBASE ANDA
+    // -------------------------------------------------------------
+    // FIREBASE CONFIGURATION (GANTI DENGAN MILIK ANDA)
+    // -------------------------------------------------------------
     const firebaseConfig = {
-  apiKey: "AIzaSyBm560355ego5BrjjpIFQXHOEWRbNeRo5o",
-  authDomain: "almuawanah-3b4a3.firebaseapp.com",
-  projectId: "almuawanah-3b4a3",
-  storageBucket: "almuawanah-3b4a3.firebasestorage.app",
-  messagingSenderId: "170719829089",
-  appId: "1:170719829089:web:a025e120b9fdaa9c84de20",
-  measurementId: "G-6P7J3NXFW6"
-};
+      apiKey: "AIzaSyBm560355ego5BrjjpIFQXHOEWRbNeRo5o",
+      authDomain: "almuawanah-3b4a3.firebaseapp.com",
+      projectId: "almuawanah-3b4a3",
+      storageBucket: "almuawanah-3b4a3.firebasestorage.app",
+      messagingSenderId: "170719829089",
+      appId: "1:170719829089:web:a025e120b9fdaa9c84de20",
+      measurementId: "G-6P7J3NXFW6"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // Global State
     window.db = db;
     window.currentUser = null;
     window.selectedChildId = null;
@@ -216,25 +197,33 @@
     window.rawGuruInfaqData = null;
     window.rawGuruCatatanResponData = null;
 
-    // --- AUTHENTICATION ---
+    // -------------------------------------------------------------
+    // AUTHENTICATION & LOGIN
+    // -------------------------------------------------------------
     window.handleLogin = async function(e) {
       e.preventDefault();
       const u = document.getElementById('username').value.trim();
       const p = document.getElementById('password').value.trim();
       const btn = document.getElementById('btnLogin');
-      btn.disabled = true; btn.innerText = "Memproses...";
+      btn.disabled = true;
+      btn.innerText = "Memproses...";
 
       try {
-        const q = query(collection(db, "users"), where("username", "==", u), where("password", "==", p));
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("username", "==", u), where("password", "==", p));
         const snap = await getDocs(q);
 
         if (snap.empty) {
           document.getElementById('loginAlert').innerHTML = `<div class="alert alert-danger p-2 small">Username atau password salah.</div>`;
-          btn.disabled = false; btn.innerText = "Masuk"; return;
+          btn.disabled = false;
+          btn.innerText = "Masuk";
+          return;
         }
 
         let userData = null;
-        snap.forEach(d => userData = { id_user: d.id, ...d.data() });
+        snap.forEach((docSnap) => {
+          userData = { id_user: docSnap.id, ...docSnap.data() };
+        });
 
         if (userData.role === 'walisiswa') {
           userData.list_siswa = await getSiswaByWaliId(userData.id_user);
@@ -242,17 +231,35 @@
 
         window.currentUser = userData;
         localStorage.setItem('tpq_user', JSON.stringify(userData));
-        if (userData.role === 'walisiswa' && userData.list_siswa?.length > 0) {
+        
+        if (userData.role === 'walisiswa' && userData.list_siswa && userData.list_siswa.length > 0) {
           window.selectedChildId = userData.list_siswa[0].id_siswa;
         }
 
-        btn.disabled = false; btn.innerText = "Masuk";
+        btn.disabled = false;
+        btn.innerText = "Masuk";
         initApp();
       } catch (err) {
         console.error(err);
-        document.getElementById('loginAlert').innerHTML = `<div class="alert alert-danger p-2 small">Error koneksi Firebase.</div>`;
-        btn.disabled = false; btn.innerText = "Masuk";
+        document.getElementById('loginAlert').innerHTML = `<div class="alert alert-danger p-2 small">Koneksi ke Firebase gagal. Periksa konfigurasi SDK.</div>`;
+        btn.disabled = false;
+        btn.innerText = "Masuk";
       }
+    };
+
+    window.logout = function(msg) {
+      window.currentUser = null;
+      window.selectedChildId = null;
+      window.rawDashboardData = null;
+      window.rawGuruMonitoringData = null;
+      window.rawGuruNilaiData = null;
+      window.rawGuruInfaqData = null;
+      window.rawGuruCatatanResponData = null;
+      localStorage.removeItem('tpq_user');
+
+      document.getElementById('appSection').style.display = 'none';
+      document.getElementById('loginSection').style.display = 'block';
+      if (msg) document.getElementById('loginAlert').innerHTML = `<div class="alert alert-warning p-2 small">${msg}</div>`;
     };
 
     async function getSiswaByWaliId(idWali) {
@@ -263,14 +270,9 @@
       return list;
     }
 
-    window.logout = function(msg) {
-      window.currentUser = null; window.selectedChildId = null;
-      localStorage.removeItem('tpq_user');
-      document.getElementById('appSection').style.display = 'none';
-      document.getElementById('loginSection').style.display = 'block';
-      if(msg) document.getElementById('loginAlert').innerHTML = `<div class="alert alert-warning p-2 small">${msg}</div>`;
-    };
-
+    // -------------------------------------------------------------
+    // NAVIGATION & MENU GENERATION
+    // -------------------------------------------------------------
     function initApp() {
       document.getElementById('loginSection').style.display = 'none';
       document.getElementById('appSection').style.display = 'block';
@@ -287,10 +289,10 @@
 
       if (window.currentUser.role === 'walisiswa') {
         container.classList.remove('d-none');
-        if (window.currentUser.list_siswa?.length > 0) {
+        if (window.currentUser.list_siswa && window.currentUser.list_siswa.length > 0) {
           dropdown.innerHTML = window.currentUser.list_siswa.map(s => `
             <option value="${s.id_siswa}" ${s.id_siswa === window.selectedChildId ? 'selected' : ''}>
-              ${s.nama_siswa} (NIS: ${s.nis})
+              ${s.nama_siswa} (NIS: ${s.nis}) - Kelas: ${s.id_kelas}
             </option>
           `).join('');
         } else {
@@ -319,6 +321,7 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-waliMasukan" onclick="switchTab('waliMasukan')"><i class="bi bi-chat-dots me-2"></i> Tanya & Masukan</a></li>
         `;
       }
+
       if (role === 'guru' || role === 'superadmin') {
         html += `
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruAbsensi" onclick="switchTab('guruAbsensi')"><i class="bi bi-pen me-2"></i> Input Absensi</a></li>
@@ -329,6 +332,7 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-guruResponWali" onclick="switchTab('guruResponWali')"><i class="bi bi-chat-square-quote me-2"></i> Respon & Pertanyaan Wali</a></li>
         `;
       }
+
       if (role === 'admin' || role === 'superadmin') {
         html += `
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminUsers" onclick="switchTab('adminUsers')"><i class="bi bi-people me-2"></i> Kelola User</a></li>
@@ -337,9 +341,13 @@
           <li class="nav-item"><a class="nav-link mb-1" id="menu-adminSetoranApproval" onclick="switchTab('adminSetoranApproval')"><i class="bi bi-check2-all me-2"></i> Approval Setoran Infaq</a></li>
         `;
       }
+
       if (role === 'kepalasekolah' || role === 'superadmin') {
-        html += `<li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaReport" onclick="switchTab('kepalaReport')"><i class="bi bi-file-earmark-bar-graph me-2"></i> Monitoring Lembaga</a></li>`;
+        html += `
+          <li class="nav-item"><a class="nav-link mb-1" id="menu-kepalaReport" onclick="switchTab('kepalaReport')"><i class="bi bi-file-earmark-bar-graph me-2"></i> Monitoring Lembaga</a></li>
+        `;
       }
+
       container.innerHTML = html;
     }
 
@@ -367,35 +375,50 @@
     };
 
     window.toggleSidebar = function() {
-      document.getElementById('sidebarContainer').classList.toggle('sidebar-hidden');
-      document.getElementById('mainContentArea').classList.toggle('col-md-12');
-      document.getElementById('mainContentArea').classList.toggle('col-md-10');
+      const sidebar = document.getElementById('sidebarContainer');
+      const main = document.getElementById('mainContentArea');
+      sidebar.classList.toggle('sidebar-hidden');
+      main.classList.toggle('col-md-12');
+      main.classList.toggle('col-md-10');
     };
 
-    // --- TAB IMPLEMENTATIONS ---
+    function getActiveChild() {
+      if (!window.currentUser.list_siswa || window.currentUser.list_siswa.length === 0) return null;
+      return window.currentUser.list_siswa.find(s => s.id_siswa === window.selectedChildId) || window.currentUser.list_siswa[0];
+    }
+
+    // -------------------------------------------------------------
+    // RENDERING FEATURES (MODUL UTAMA)
+    // -------------------------------------------------------------
+
+    // === 1. DASHBOARD ===
     async function renderDashboard() {
-      if (window.currentUser.role === 'guru') renderDashboardGuru();
-      else renderDashboardWali();
+      if (window.currentUser.role === 'guru') {
+        renderDashboardGuru();
+      } else {
+        renderDashboardWali();
+      }
     }
 
     async function renderDashboardGuru() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Dashboard...`;
 
-      const qS = query(collection(db, "siswa"), where("id_kelas", "==", window.currentUser.id_kelas || ""));
-      const snapS = await getDocs(qS);
+      const idKelas = window.currentUser.id_kelas || '';
+      const qSiswa = query(collection(db, "siswa"), where("id_kelas", "==", idKelas));
+      const snapSiswa = await getDocs(qSiswa);
       let siswaList = [];
-      snapS.forEach(d => siswaList.push({ id_siswa: d.id, ...d.data() }));
+      snapSiswa.forEach(d => siswaList.push({ id_siswa: d.id, ...d.data() }));
 
-      const today = new Date().toISOString().split('T')[0];
-      const qA = query(collection(db, "absensi"), where("tanggal", "==", today));
-      const snapA = await getDocs(qA);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const qAbsen = query(collection(db, "absensi"), where("tanggal", "==", todayStr));
+      const snapAbsen = await getDocs(qAbsen);
       
       let stats = { masuk: 0, izin: 0, sakit: 0, alpa: 0 };
-      snapA.forEach(d => {
-        const data = d.data();
-        if (siswaList.some(s => s.id_siswa === data.id_siswa)) {
-          const st = (data.status || '').toLowerCase();
+      snapAbsen.forEach(d => {
+        const item = d.data();
+        if (siswaList.some(s => s.id_siswa === item.id_siswa)) {
+          const st = (item.status || '').toLowerCase();
           if (st === 'masuk') stats.masuk++;
           else if (st === 'izin') stats.izin++;
           else if (st === 'sakit') stats.sakit++;
@@ -403,13 +426,22 @@
         }
       });
 
+      let rows = siswaList.map((s, idx) => `
+        <tr>
+          <td class="text-center">${idx + 1}</td>
+          <td class="fw-semibold">${s.nama_siswa}</td>
+          <td class="text-center">${s.nis}</td>
+          <td class="text-center"><span class="badge bg-success">${s.status_siswa || 'Aktif'}</span></td>
+        </tr>
+      `).join('');
+
       main.innerHTML = `
         <div class="row g-3 mb-4">
           <div class="col-md-5">
             <div class="card card-dashboard p-3 border-start border-success border-4 h-100">
               <h6 class="text-muted">Profil Guru</h6>
               <h4>${window.currentUser.nama}</h4>
-              <span class="badge bg-success w-50 mb-3">${window.currentUser.role.toUpperCase()}</span>
+              <span class="badge bg-success w-50 mb-3">GURU KELAS: ${idKelas}</span>
               <div class="p-3 bg-light rounded border">
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="text-muted">Total Santri:</span>
@@ -420,7 +452,7 @@
           </div>
           <div class="col-md-7">
             <div class="card card-dashboard p-3 h-100">
-              <h5><i class="bi bi-pie-chart text-success me-2"></i> Kehadiran Kelas Hari Ini (${today})</h5>
+              <h5><i class="bi bi-pie-chart text-success me-2"></i> Kehadiran Hari Ini (${todayStr})</h5>
               <div class="row text-center g-2 mt-2">
                 <div class="col-3"><div class="p-2 border rounded bg-success bg-opacity-10 text-success"><small class="fw-bold d-block">MASUK</small><span class="fs-4 fw-bold">${stats.masuk}</span></div></div>
                 <div class="col-3"><div class="p-2 border rounded bg-info bg-opacity-10 text-info"><small class="fw-bold d-block">IZIN</small><span class="fs-4 fw-bold">${stats.izin}</span></div></div>
@@ -430,54 +462,81 @@
             </div>
           </div>
         </div>
+        <div class="card card-dashboard p-4">
+          <h5 class="mb-3">Daftar Santri Kelas: ${idKelas}</h5>
+          <table class="table table-bordered align-middle">
+            <thead class="table-success"><tr><th width="50" class="text-center">No</th><th>Nama Santri</th><th width="150" class="text-center">NIS</th><th width="150" class="text-center">Status</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="4" class="text-center">Belum ada santri.</td></tr>'}</tbody>
+          </table>
+        </div>
       `;
     }
 
     async function renderDashboardWali() {
+      const activeChild = getActiveChild();
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Dashboard...`;
-
-      const qP = query(collection(db, "masukan_wali"), where("status", "==", "Public"));
-      const snapP = await getDocs(qP);
-      let listHtml = '<ul class="list-group list-group-flush">';
-      snapP.forEach(d => {
-        const m = d.data();
-        listHtml += `
-          <li class="list-group-item">
-            <strong>Q: ${m.subjek}</strong> <span class="text-muted small">(${m.tanggal})</span>
-            <p class="mb-1 text-secondary">${m.pesan}</p>
-            ${m.jawaban ? `<div class="bg-light p-2 rounded border-start border-3 border-info mt-1"><strong>A:</strong> ${m.jawaban}</div>` : ''}
-          </li>`;
-      });
-      listHtml += '</ul>';
 
       main.innerHTML = `
         <div class="row g-3">
           <div class="col-md-5">
             <div class="card card-dashboard p-3 border-start border-success border-4">
-              <h6 class="text-muted">Profil Wali</h6>
+              <h6 class="text-muted">Profil Akun Wali</h6>
               <h4>${window.currentUser.nama}</h4>
-              <span class="badge bg-success w-50 mb-3">${window.currentUser.role.toUpperCase()}</span>
+              <span class="badge bg-success w-50 mb-3">WALI SANTRI</span>
+              ${activeChild ? `
+                <div class="p-3 bg-light rounded border">
+                  <h6 class="fw-bold text-success mb-2">Santri Aktif</h6>
+                  <p class="mb-1">Nama: <strong>${activeChild.nama_siswa}</strong></p>
+                  <p class="mb-1">NIS: ${activeChild.nis}</p>
+                  <p class="mb-0">Kelas: <span class="badge bg-info text-dark">${activeChild.id_kelas}</span></p>
+                </div>
+              ` : '<div class="alert alert-warning">Tidak ada santri aktif.</div>'}
             </div>
           </div>
           <div class="col-md-7">
             <div class="card card-dashboard p-3">
-              <h5><i class="bi bi-megaphone text-success me-2"></i> Informasi & Diskusi Publik</h5>
-              ${listHtml}
+              <h5><i class="bi bi-megaphone text-success me-2"></i> Diskusi & Informasi Publik</h5>
+              <div id="publicBoard" class="mt-2"><div class="spinner-border spinner-border-sm text-success"></div> Memuat...</div>
             </div>
           </div>
         </div>
       `;
+
+      const q = query(collection(db, "masukan_wali"), where("status", "==", "Public"));
+      const snap = await getDocs(q);
+      let html = '<ul class="list-group list-group-flush">';
+      if (snap.empty) html += '<li class="list-group-item text-muted">Belum ada diskusi publik.</li>';
+      else {
+        snap.forEach(d => {
+          const item = d.data();
+          html += `
+            <li class="list-group-item">
+              <strong>Q: ${item.subjek}</strong> <small class="text-muted">(${item.tanggal})</small><br>
+              <p class="mb-1 text-secondary">${item.pesan}</p>
+              ${item.jawaban ? `<div class="bg-light p-2 rounded border-start border-3 border-info"><strong>A:</strong> ${item.jawaban}</div>` : ''}
+            </li>
+          `;
+        });
+      }
+      html += '</ul>';
+      document.getElementById('publicBoard').innerHTML = html;
     }
 
+    // === 2. WALI SISWA FITUR ===
     function renderWaliAbsensi() {
+      const activeChild = getActiveChild();
+      if (!activeChild) {
+        document.getElementById('mainContent').innerHTML = `<div class="alert alert-warning">Pilih santri terlebih dahulu.</div>`;
+        return;
+      }
+
       document.getElementById('mainContent').innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-calendar-plus text-success me-2"></i> Form Pengajuan Absensi Santri</h5>
-          <form onsubmit="submitPengajuan(event)">
+          <h5>Form Pengajuan Absensi: <strong>${activeChild.nama_siswa}</strong></h5>
+          <form onsubmit="submitIzin(event)">
             <div class="mb-3"><label class="form-label">Tanggal</label><input type="date" id="tglIzin" class="form-control" required></div>
             <div class="mb-3">
-              <label class="form-label">Jenis Halangan</label>
+              <label class="form-label">Jenis</label>
               <select id="jenisIzin" class="form-select"><option value="Izin">Izin</option><option value="Sakit">Sakit</option></select>
             </div>
             <div class="mb-3"><label class="form-label">Alasan</label><textarea id="alasanIzin" class="form-control" rows="3" required></textarea></div>
@@ -487,171 +546,411 @@
       `;
     }
 
-    window.submitPengajuan = async function(e) {
+    window.submitIzin = async function(e) {
       e.preventDefault();
-      await addDoc(collection(db, "pengajuan_absensi"), {
-        id_siswa: window.selectedChildId,
-        tanggal: document.getElementById('tglIzin').value,
-        jenis: document.getElementById('jenisIzin').value,
-        alasan: document.getElementById('alasanIzin').value,
-        status: 'Pending'
-      });
-      alert('Pengajuan berhasil dikirim!');
-      switchTab('dashboard');
+      const activeChild = getActiveChild();
+      try {
+        await addDoc(collection(db, "pengajuan_absensi"), {
+          id_siswa: activeChild.id_siswa,
+          tanggal: document.getElementById('tglIzin').value,
+          jenis: document.getElementById('jenisIzin').value,
+          alasan: document.getElementById('alasanIzin').value,
+          status: 'Pending',
+          created_at: new Date()
+        });
+        alert('Pengajuan absensi berhasil dikirim!');
+        switchTab('dashboard');
+      } catch (err) {
+        alert('Gagal mengirim: ' + err.message);
+      }
     };
 
     async function renderWaliMonitoring() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Monitoring Santri Lengkap (Firestore Connected)</h5></div>`;
+      const activeChild = getActiveChild();
+      if (!activeChild) return;
+
+      document.getElementById('mainContent').innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5>Monitoring Santri: <strong>${activeChild.nama_siswa}</strong></h5>
+          <p class="text-muted mb-3">NIS: ${activeChild.nis} | Kelas: ${activeChild.id_kelas}</p>
+          <ul class="nav nav-tabs" id="monTab">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabAbsen">Kehadiran</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabNilai">Nilai Harian</a></li>
+          </ul>
+          <div class="tab-content pt-3">
+            <div class="tab-pane fade show active" id="tabAbsen"><div id="listAbsenWali">Memuat...</div></div>
+            <div class="tab-pane fade" id="tabNilai"><div id="listNilaiWali">Memuat...</div></div>
+          </div>
+        </div>
+      `;
+
+      // Fetch Absensi
+      const qA = query(collection(db, "absensi"), where("id_siswa", "==", activeChild.id_siswa));
+      const snapA = await getDocs(qA);
+      let rowsA = '';
+      snapA.forEach(d => {
+        const a = d.data();
+        rowsA += `<tr><td>${a.tanggal}</td><td><span class="badge bg-success">${a.status}</span></td><td>${a.keterangan || '-'}</td></tr>`;
+      });
+      document.getElementById('listAbsenWali').innerHTML = `
+        <table class="table table-sm table-bordered"><thead><tr><th>Tanggal</th><th>Status</th><th>Keterangan</th></tr></thead>
+        <tbody>${rowsA || '<tr><td colspan="3">Belum ada data.</td></tr>'}</tbody></table>
+      `;
+
+      // Fetch Nilai
+      const qN = query(collection(db, "nilai"), where("id_siswa", "==", activeChild.id_siswa));
+      const snapN = await getDocs(qN);
+      let rowsN = '';
+      snapN.forEach(d => {
+        const n = d.data();
+        rowsN += `<tr><td>${n.tanggal}</td><td>${n.materi}</td><td><strong>${n.nilai}</strong></td><td>${n.catatan || '-'}</td></tr>`;
+      });
+      document.getElementById('listNilaiWali').innerHTML = `
+        <table class="table table-sm table-bordered"><thead><tr><th>Tanggal</th><th>Materi</th><th>Nilai</th><th>Catatan</th></tr></thead>
+        <tbody>${rowsN || '<tr><td colspan="4">Belum ada data nilai.</td></tr>'}</tbody></table>
+      `;
     }
 
     function renderWaliMasukan() {
       document.getElementById('mainContent').innerHTML = `
         <div class="card card-dashboard p-4 mb-4">
-          <h5><i class="bi bi-chat-square-dots text-success me-2"></i> Form Pertanyaan & Masukan Wali</h5>
-          <form onsubmit="submitMasukan(event)">
+          <h5>Tanya & Masukan Wali</h5>
+          <form onsubmit="submitPesanWali(event)">
             <div class="mb-3"><label class="form-label">Subjek</label><input type="text" id="subjekPesan" class="form-control" required></div>
             <div class="mb-3"><label class="form-label">Pesan</label><textarea id="isiPesan" class="form-control" rows="3" required></textarea></div>
-            <button type="submit" class="btn btn-success">Kirim</button>
+            <button type="submit" class="btn btn-success">Kirim Pesan</button>
           </form>
         </div>
       `;
     }
 
-    window.submitMasukan = async function(e) {
+    window.submitPesanWali = async function(e) {
       e.preventDefault();
-      await addDoc(collection(db, "masukan_wali"), {
-        id_wali: window.currentUser.id_user,
-        tanggal: new Date().toISOString().split('T')[0],
-        subjek: document.getElementById('subjekPesan').value,
-        pesan: document.getElementById('isiPesan').value,
-        status: 'Pending'
-      });
-      alert('Pesan berhasil dikirim!');
-      switchTab('waliMasukan');
+      try {
+        await addDoc(collection(db, "masukan_wali"), {
+          id_wali: window.currentUser.id_user,
+          tanggal: new Date().toISOString().split('T')[0],
+          subjek: document.getElementById('subjekPesan').value,
+          pesan: document.getElementById('isiPesan').value,
+          status: 'Pending',
+          jawaban: '',
+          answered_by: ''
+        });
+        alert('Masukan berhasil dikirim! Menunggu moderasi Admin.');
+        switchTab('dashboard');
+      } catch (err) {
+        alert('Gagal mengirim: ' + err.message);
+      }
     };
 
+    // === 3. GURU FITUR ===
     async function renderGuruAbsensi() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat data santri...`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Santri...`;
 
-      const qS = query(collection(db, "siswa"), where("id_kelas", "==", window.currentUser.id_kelas || ""));
+      const idKelas = window.currentUser.id_kelas || '';
+      const qS = query(collection(db, "siswa"), where("id_kelas", "==", idKelas));
       const snapS = await getDocs(qS);
 
       let rows = '';
       snapS.forEach(d => {
         const s = d.data();
         rows += `
-          <tr>
+          <tr data-id="${d.id}">
             <td><strong>${s.nama_siswa}</strong> (${s.nis})</td>
             <td>
-              <select class="form-select form-select-sm status-absen" data-id="${d.id}" data-nama="${s.nama_siswa}">
-                <option value="Masuk">Masuk</option><option value="Izin">Izin</option><option value="Sakit">Sakit</option><option value="Alpa">Alpa</option>
+              <select class="form-select form-select-sm status-absen">
+                <option value="Masuk">Masuk</option>
+                <option value="Izin">Izin</option>
+                <option value="Sakit">Sakit</option>
+                <option value="Alpa">Alpa</option>
               </select>
             </td>
-            <td><input type="text" class="form-control form-control-sm ket-absen" data-id="${d.id}"></td>
+            <td><input type="text" class="form-control form-control-sm ket-absen" placeholder="Opsional"></td>
           </tr>
         `;
       });
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-pen text-success me-2"></i> Input Absensi Kelas</h5>
-          <div class="mb-3 w-25"><label class="form-label">Tanggal</label><input type="date" id="tglAbsensiGuru" class="form-control" value="${new Date().toISOString().split('T')[0]}"></div>
+          <h5>Input Absensi Kelas: ${idKelas}</h5>
+          <div class="mb-3 w-25">
+            <label class="form-label">Tanggal</label>
+            <input type="date" id="tglAbsensiGuru" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+          </div>
           <table class="table table-bordered align-middle">
-            <thead class="table-success"><tr><th>Nama Santri</th><th width="200">Status</th><th>Keterangan</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="3">Tidak ada santri.</td></tr>'}</tbody>
+            <thead class="table-success"><tr><th>Nama Santri</th><th width="180">Status</th><th>Keterangan</th></tr></thead>
+            <tbody id="tblSiswaAbsen">${rows || '<tr><td colspan="3">Tidak ada santri.</td></tr>'}</tbody>
           </table>
-          <button class="btn btn-success" onclick="simpanAbsensiBulk()">Simpan Absensi</button>
+          <button class="btn btn-success" onclick="saveAbsensiBulk()">Simpan Absensi</button>
         </div>
       `;
     }
 
-    window.simpanAbsensiBulk = async function() {
+    window.saveAbsensiBulk = async function() {
       const tgl = document.getElementById('tglAbsensiGuru').value;
-      const selects = document.querySelectorAll('.status-absen');
-
-      for (let sel of selects) {
-        const idSiswa = sel.getAttribute('data-id');
-        const ket = document.querySelector(`.ket-absen[data-id="${idSiswa}"]`).value;
-
-        await addDoc(collection(db, "absensi"), {
-          id_siswa: idSiswa,
-          tanggal: tgl,
-          status: sel.value,
-          keterangan: ket
-        });
+      const rows = document.querySelectorAll('#tblSiswaAbsen tr');
+      try {
+        for (let r of rows) {
+          const id = r.getAttribute('data-id');
+          const st = r.querySelector('.status-absen').value;
+          const ket = r.querySelector('.ket-absen').value;
+          if (id) {
+            await addDoc(collection(db, "absensi"), {
+              id_siswa: id,
+              tanggal: tgl,
+              status: st,
+              keterangan: ket,
+              created_at: new Date()
+            });
+          }
+        }
+        alert('Absensi berhasil disimpan!');
+      } catch (err) {
+        alert('Gagal menyimpan: ' + err.message);
       }
-      alert('Absensi berhasil disimpan!');
     };
 
-    async function renderGuruMonitoring() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Rekap & Matriks Absensi Kelas (Firestore Connected)</h5></div>`;
-    }
-
     async function renderGuruNilai() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Kelola Nilai Santri (Firestore Connected)</h5></div>`;
+      const idKelas = window.currentUser.id_kelas || '';
+      const qS = query(collection(db, "siswa"), where("id_kelas", "==", idKelas));
+      const snapS = await getDocs(qS);
+      let options = '';
+      snapS.forEach(d => options += `<option value="${d.id}">${d.data().nama_siswa}</option>`);
+
+      document.getElementById('mainContent').innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5>Kelola Nilai Santri Kelas: ${idKelas}</h5>
+          <form onsubmit="submitNilaiSiswa(event)" class="mt-3">
+            <div class="mb-3"><label class="form-label">Pilih Santri</label><select id="nilaiSiswa" class="form-select">${options}</select></div>
+            <div class="mb-3"><label class="form-label">Tanggal</label><input type="date" id="nilaiTgl" class="form-control" value="${new Date().toISOString().split('T')[0]}" required></div>
+            <div class="mb-3"><label class="form-label">Materi / Hafalan</label><input type="text" id="nilaiMateri" class="form-control" required placeholder="Jilid 2 / Surah An-Naba"></div>
+            <div class="mb-3"><label class="form-label">Nilai</label><input type="text" id="nilaiSkor" class="form-control" required placeholder="A / 90"></div>
+            <div class="mb-3"><label class="form-label">Catatan</label><textarea id="nilaiCatatan" class="form-control" rows="2"></textarea></div>
+            <button type="submit" class="btn btn-success">Simpan Nilai</button>
+          </form>
+        </div>
+      `;
     }
 
-    async function renderGuruInfaq() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Kelola & Setor Infaq Santri (Firestore Connected)</h5></div>`;
-    }
+    window.submitNilaiSiswa = async function(e) {
+      e.preventDefault();
+      try {
+        await addDoc(collection(db, "nilai"), {
+          id_siswa: document.getElementById('nilaiSiswa').value,
+          tanggal: document.getElementById('nilaiTgl').value,
+          materi: document.getElementById('nilaiMateri').value,
+          nilai: document.getElementById('nilaiSkor').value,
+          catatan: document.getElementById('nilaiCatatan').value,
+          created_by: window.currentUser.nama
+        });
+        alert('Nilai harian berhasil disimpan!');
+      } catch (err) {
+        alert('Gagal menyimpan: ' + err.message);
+      }
+    };
 
-    async function renderGuruCatatan() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Catatan Perkembangan Santri (Firestore Connected)</h5></div>`;
+    function renderGuruMonitoring() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Monitoring Kehadiran Kelas (Firestore Connected)</h5></div>`;
+    }
+    function renderGuruInfaq() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Kelola Infaq Santri (Firestore Connected)</h5></div>`;
+    }
+    function renderGuruCatatan() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Catatan Perkembangan Santri (Firestore Connected)</h5></div>`;
     }
 
     async function renderGuruResponWali() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Tanggapan Pesan Wali (Firestore Connected)</h5></div>`;
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Masukan...`;
+
+      const q = query(collection(db, "masukan_wali"), where("status", "==", "Approved"));
+      const snap = await getDocs(q);
+
+      let rows = '';
+      snap.forEach(d => {
+        const item = d.data();
+        rows += `
+          <tr>
+            <td>${item.tanggal}</td>
+            <td>${item.subjek}</td>
+            <td>${item.pesan}</td>
+            <td>${item.jawaban || '<em>Belum dijawab</em>'}</td>
+            <td><button class="btn btn-sm btn-outline-success" onclick="openModalJawab('${d.id}', '${encodeURIComponent(item.pesan)}')">Jawab</button></td>
+          </tr>
+        `;
+      });
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5>Pertanyaan & Masukan Wali Santri</h5>
+          <table class="table table-bordered align-middle mt-3">
+            <thead class="table-success"><tr><th>Tanggal</th><th>Subjek</th><th>Pesan</th><th>Jawaban</th><th>Aksi</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="5">Belum ada masukan approved.</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
     }
 
+    window.openModalJawab = function(id, msg) {
+      document.getElementById('modalIdMasukan').value = id;
+      document.getElementById('modalPesanPreview').innerText = decodeURIComponent(msg);
+      new bootstrap.Modal(document.getElementById('jawabPesanModal')).show();
+    };
+
+    window.submitJawabPesan = async function() {
+      const id = document.getElementById('modalIdMasukan').value;
+      const jwb = document.getElementById('modalJawabanInput').value;
+      try {
+        await updateDoc(doc(db, "masukan_wali", id), {
+          jawaban: jwb,
+          answered_by: window.currentUser.nama,
+          status: 'Public'
+        });
+        alert('Tanggapan berhasil dikirim dan dipublikasikan!');
+        bootstrap.Modal.getInstance(document.getElementById('jawabPesanModal')).hide();
+        renderGuruResponWali();
+      } catch (err) {
+        alert('Gagal merespon: ' + err.message);
+      }
+    };
+
+    // === 4. ADMIN FITUR ===
     async function renderAdminUsers() {
       const main = document.getElementById('mainContent');
-      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat User...`;
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Users...`;
 
       const snap = await getDocs(collection(db, "users"));
       let rows = '';
       snap.forEach(d => {
         const u = d.data();
-        rows += `<tr><td>${u.username}</td><td>${u.nama}</td><td><span class="badge bg-secondary">${u.role}</span></td></tr>`;
+        rows += `<tr><td>${u.username}</td><td>${u.nama}</td><td><span class="badge bg-secondary">${u.role}</span></td><td>${u.id_kelas || '-'}</td></tr>`;
       });
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-people text-success me-2"></i> Kelola User</h5>
-          <table class="table table-bordered mt-3">
-            <thead class="table-light"><tr><th>Username</th><th>Nama</th><th>Role</th></tr></thead>
+          <h5>Tambah & Manajemen User</h5>
+          <form onsubmit="addUser(event)" class="row g-2 mb-4">
+            <div class="col-md-2"><input type="text" id="newUsername" class="form-control" required placeholder="Username"></div>
+            <div class="col-md-2"><input type="password" id="newPass" class="form-control" required placeholder="Password"></div>
+            <div class="col-md-3"><input type="text" id="newNama" class="form-control" required placeholder="Nama Lengkap"></div>
+            <div class="col-md-3">
+              <select id="newRole" class="form-select">
+                <option value="guru">Guru</option>
+                <option value="walisiswa">Wali Siswa</option>
+                <option value="admin">Admin</option>
+                <option value="kepalasekolah">Kepala Sekolah</option>
+              </select>
+            </div>
+            <div class="col-md-2"><button type="submit" class="btn btn-success w-100">Tambah</button></div>
+          </form>
+          <h6>Daftar Pengguna Aktif</h6>
+          <table class="table table-sm table-bordered">
+            <thead class="table-light"><tr><th>Username</th><th>Nama</th><th>Role</th><th>Kelas</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
       `;
     }
 
-    async function renderAdminKelas() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Penempatan Kelas & Status Santri (Firestore Connected)</h5></div>`;
+    window.addUser = async function(e) {
+      e.preventDefault();
+      try {
+        await addDoc(collection(db, "users"), {
+          username: document.getElementById('newUsername').value,
+          password: document.getElementById('newPass').value,
+          nama: document.getElementById('newNama').value,
+          role: document.getElementById('newRole').value,
+          id_kelas: ''
+        });
+        alert('User berhasil ditambahkan!');
+        renderAdminUsers();
+      } catch (err) {
+        alert('Gagal menambah user: ' + err.message);
+      }
+    };
+
+    function renderAdminKelas() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Manajemen Kelas & Penempatan Santri (Firestore Connected)</h5></div>`;
     }
 
     async function renderAdminModerasi() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Moderasi Pesan Wali (Firestore Connected)</h5></div>`;
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Masukan...`;
+
+      const snap = await getDocs(collection(db, "masukan_wali"));
+      let rows = '';
+      snap.forEach(d => {
+        const p = d.data();
+        rows += `
+          <tr>
+            <td>${p.tanggal}</td>
+            <td>${p.subjek}</td>
+            <td>${p.pesan}</td>
+            <td><span class="badge bg-warning text-dark">${p.status}</span></td>
+            <td>
+              <button class="btn btn-sm btn-success me-1" onclick="modPesan('${d.id}', 'Approved')">Approve</button>
+              <button class="btn btn-sm btn-info" onclick="modPesan('${d.id}', 'Public')">Publish</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5>Moderasi Masukan & Pertanyaan Wali</h5>
+          <table class="table table-bordered align-middle mt-3">
+            <thead class="table-light"><tr><th>Tanggal</th><th>Subjek</th><th>Pesan</th><th>Status</th><th>Aksi</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="5">Belum ada masukan.</td></tr>'}</tbody>
+          </table>
+        </div>
+      `;
     }
 
-    async function renderAdminSetoranApproval() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Approval Setoran Infaq (Firestore Connected)</h5></div>`;
+    window.modPesan = async function(id, status) {
+      try {
+        await updateDoc(doc(db, "masukan_wali", id), { status: status });
+        alert(`Status berhasil diubah menjadi ${status}`);
+        renderAdminModerasi();
+      } catch (err) {
+        alert('Gagal memoderasi: ' + err.message);
+      }
+    };
+
+    function renderAdminSetoranApproval() {
+      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Approval Setoran Infaq Guru (Firestore Connected)</h5></div>`;
     }
 
+    // === 5. KEPALA SEKOLAH FITUR ===
     async function renderKepalaReport() {
-      document.getElementById('mainContent').innerHTML = `<div class="card card-dashboard p-4"><h5>Fitur Laporan Global Lembaga (Firestore Connected)</h5></div>`;
+      const snapA = await getDocs(collection(db, "absensi"));
+      const snapI = await getDocs(collection(db, "infaq"));
+      const snapM = await getDocs(collection(db, "masukan_wali"));
+
+      document.getElementById('mainContent').innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5>Monitoring Global Lembaga TPQ</h5>
+          <hr>
+          <div class="row text-center mb-4">
+            <div class="col-md-4"><div class="p-3 border rounded bg-light"><h6>Total Record Absensi</h6><h4>${snapA.size}</h4></div></div>
+            <div class="col-md-4"><div class="p-3 border rounded bg-light"><h6>Total Transaksi Infaq</h6><h4>${snapI.size}</h4></div></div>
+            <div class="col-md-4"><div class="p-3 border rounded bg-light"><h6>Total Masukan Wali</h6><h4>${snapM.size}</h4></div></div>
+          </div>
+        </div>
+      `;
     }
 
-    // Auto Restore Session
-    const saved = localStorage.getItem('tpq_user');
-    if (saved) {
-      window.currentUser = JSON.parse(saved);
-      if(window.currentUser.list_siswa?.length > 0) {
+    // AUTO RESTORE SESSION
+    const savedUser = localStorage.getItem('tpq_user');
+    if (savedUser) {
+      window.currentUser = JSON.parse(savedUser);
+      if (window.currentUser.list_siswa && window.currentUser.list_siswa.length > 0) {
         window.selectedChildId = window.currentUser.list_siswa[0].id_siswa;
       }
       initApp();
     }
   </script>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
