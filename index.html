@@ -3231,12 +3231,12 @@
       const paginated = paginateArray(window.rawTahunAjaranCache, 'tahunAjaran');
       let rows = '';
       let no = (window.paginationState.tahunAjaran.page - 1) * window.paginationState.tahunAjaran.limit + 1;
-
+    
       paginated.forEach(item => {
         const statusBadge = item.is_active ? 
           '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>AKTIF</span>' : 
           '<span class="badge bg-secondary">Non-Aktif</span>';
-
+    
         rows += `
           <tr>
             <td class="text-center">${no++}</td>
@@ -3255,17 +3255,17 @@
           </tr>
         `;
       });
-
+    
       const tbody = document.getElementById('tblTahunAjaranBody');
       if (tbody) {
         tbody.innerHTML = rows || '<tr><td colspan="6" class="text-center text-muted">Belum ada data tahun ajaran di database.</td></tr>';
       }
+    
       const pagEl = document.getElementById('paginationTahunAjaran');
       if (pagEl) {
         pagEl.innerHTML = renderPaginationControls('tahunAjaran', window.rawTahunAjaranCache.length, renderTahunAjaranTable);
       }
     }
-
     window.submitSetTahunAjaranAktif = async function(e) {
       e.preventDefault();
       const selectedDocId = document.getElementById('selectTAAktifDocId').value;
