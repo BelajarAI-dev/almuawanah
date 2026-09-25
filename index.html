@@ -103,7 +103,7 @@
 
     <div class="container-fluid">
       <div class="row">
-        <!-- SIDEBAR MENU -->
+        <!-- SIDEBAR MENU BERBASIS ROLE YANG USER FRIENDLY -->
         <div class="col-md-2 p-3 sidebar-menu" id="sidebarContainer">
           <h6 class="text-uppercase text-muted fw-bold small px-2">Menu Navigasi</h6>
           <ul class="nav nav-pills flex-column" id="sidebarNav">
@@ -240,6 +240,7 @@
               <option value="walisiswa">Wali Siswa</option>
               <option value="admin">Admin</option>
               <option value="kepalasekolah">Kepala Sekolah</option>
+              <option value="superadmin">Super Admin</option>
             </select>
           </div>
           <div class="mb-3"><label class="form-label fw-bold">Kelas</label><select id="editUserKelas" class="form-select"></select></div>
@@ -413,7 +414,7 @@
     </div>
   </div>
 
-  <!-- MODAL KENAIKAN KELAS SANTRI OLEH KEPALA SEKOLAH -->
+  <!-- MODAL KENAIKAN KELAS SANTRI OLEH KEPALA SEKOLAH / SUPER ADMIN -->
   <div class="modal fade" id="naikKelasModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -499,7 +500,8 @@
       tahunAjaran: { page: 1, limit: 10 },
       moderasi: { page: 1, limit: 10 },
       logs: { page: 1, limit: 10 },
-      kepalaSiswa: { page: 1, limit: 10 }
+      kepalaSiswa: { page: 1, limit: 10 },
+      dbManager: { page: 1, limit: 10 }
     };
 
     // Helper: Pagination Component Rendering
@@ -702,7 +704,7 @@
     }
 
     // -------------------------------------------------------------
-    // NAVIGATION & MENU GENERATION
+    // NAVIGATION & MENU GENERATION (USER FRIENDLY & SUPER ADMIN INCLUSION)
     // -------------------------------------------------------------
     function initApp() {
       document.getElementById('loginSection').style.display = 'none';
@@ -787,6 +789,13 @@
         `;
       }
 
+      if (role === 'superadmin') {
+        html += `
+          <hr class="text-muted my-2">
+          <li class="nav-item"><a class="nav-link mb-1 bg-success text-white fw-bold" id="menu-superAdminDB" onclick="switchTab('superAdminDB')"><i class="bi bi-database-fill-gear me-2"></i> Kelola Database (CRUD)</a></li>
+        `;
+      }
+
       container.innerHTML = html;
     }
 
@@ -820,6 +829,7 @@
       else if (tabName === 'kepalaModerasi') renderKepalaModerasi();
       else if (tabName === 'kepalaKenaikanKelas') renderKepalaKenaikanKelas();
       else if (tabName === 'kepalaLogs') renderKepalaLogs();
+      else if (tabName === 'superAdminDB') renderSuperAdminDB();
     };
 
     window.toggleSidebar = function() {
@@ -843,7 +853,7 @@
     async function renderDashboard() {
       if (window.currentUser.role === 'guru') {
         renderDashboardGuru();
-      } else if (window.currentUser.role === 'kepalasekolah') {
+      } else if (window.currentUser.role === 'kepalasekolah' || window.currentUser.role === 'superadmin') {
         renderKepalaDashboard();
       } else {
         renderDashboardWali();
@@ -2155,7 +2165,7 @@
       }
 
       const containerAksi = document.getElementById('modalAksiPenangananContainer');
-      if (window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'kepalasekolah')) {
+      if (window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'kepalasekolah' || window.currentUser.role === 'superadmin')) {
         if (containerAksi) containerAksi.style.display = 'none';
       } else {
         if (containerAksi) containerAksi.style.display = 'block';
@@ -2171,7 +2181,7 @@
       const aksiPenanganan = document.getElementById('modalAksiPenanganan')?.value;
 
       try {
-        if (window.currentUser.role !== 'admin' && window.currentUser.role !== 'kepalasekolah' && aksiPenanganan === 'teruskan') {
+        if (window.currentUser.role !== 'admin' && window.currentUser.role !== 'kepalasekolah' && window.currentUser.role !== 'superadmin' && aksiPenanganan === 'teruskan') {
           await updateDoc(doc(db, "masukan_wali", id), { status: 'Forwarded to Admin' });
           await logSystemActivity(`Guru meneruskan pertanyaan wali ke Admin`);
           alert('Pertanyaan berhasil diteruskan ke Admin / Kepala Sekolah!');
@@ -2189,6 +2199,7 @@
         
         if (window.currentUser.role === 'admin') renderAdminModerasi();
         else if (window.currentUser.role === 'kepalasekolah') renderKepalaModerasi();
+        else if (window.currentUser.role === 'superadmin') renderAdminModerasi();
         else renderGuruResponWali();
       } catch (err) {
         alert('Gagal memproses tanggapan: ' + err.message);
@@ -2239,7 +2250,7 @@
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-cash-coin text-success me-2"></i> ${isAdmin ? 'Kelola Infaq Santri (Admin)' : 'Audit Infaq Lembaga'}</h5>
+          <h5><i class="bi bi-cash-coin text-success me-2"></i> ${isAdmin ? 'Kelola Infaq Santri' : 'Audit Infaq Lembaga'}</h5>
           <hr>
           ${isAdmin ? `
             <ul class="nav nav-tabs" id="adminInfaqNav">
@@ -2723,7 +2734,7 @@
       let usersList = [];
       snap.forEach(d => {
         const u = d.data();
-        if (u.role !== 'superadmin') {
+        if (u.role !== 'superadmin' || window.currentUser.role === 'superadmin') {
           usersList.push({ docId: d.id, ...u });
         }
       });
@@ -2746,6 +2757,7 @@
                 <option value="walisiswa">Wali Siswa</option>
                 <option value="admin">Admin</option>
                 <option value="kepalasekolah">Kepala Sekolah</option>
+                <option value="superadmin">Super Admin</option>
               </select>
             </div>
             <div class="col-md-2"><select id="newKelas" class="form-select">${kelasOptionsHtml}</select></div>
@@ -2762,6 +2774,7 @@
                 <option value="walisiswa">Wali Siswa</option>
                 <option value="admin">Admin</option>
                 <option value="kepalasekolah">Kepala Sekolah</option>
+                <option value="superadmin">Super Admin</option>
               </select>
             </div>
             <div class="col-md-8">
@@ -3606,9 +3619,7 @@
       document.getElementById('paginationLogs').innerHTML = renderPaginationControls('logs', filtered.length, 'filterLogsTable');
     };
 
-    // === 5. KEPALA SEKOLAH FITUR LENGKAP (6 POIN PRIVILEGE) ===
-
-    // 5.1 Dashboard Monitoring Eksekutif & Statistik Global
+    // === 5. KEPALA SEKOLAH FITUR LENGKAP ===
     async function renderKepalaDashboard() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Dashboard Eksekutif...`;
@@ -3669,7 +3680,6 @@
       `;
     }
 
-    // 5.2 Laporan Kehadiran & Akademik Kelas (Matriks & Rekap Nilai + Cetak PDF A4/Landscape)
     async function renderKepalaAkademik() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Laporan Akademik...`;
@@ -3972,17 +3982,14 @@
       window.print();
     };
 
-    // 5.3 Audit Keuangan & Infaq Santri (Memanggil renderAdminInfaq)
     async function renderKepalaInfaq() {
       renderAdminInfaq();
     }
 
-    // 5.4 Pengawasan Tanya & Masukan (Moderasi Lanjutan)
     async function renderKepalaModerasi() {
       renderAdminModerasi();
     }
 
-    // 5.5 Update & Kenaikan Kelas Santri Persiswa
     async function renderKepalaKenaikanKelas() {
       const main = document.getElementById('mainContent');
       main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Data Santri...`;
@@ -4097,10 +4104,211 @@
       }
     };
 
-    // 5.6 Audit Log Aktivitas Sistem
     async function renderKepalaLogs() {
       renderAdminLogs();
     }
+
+
+    // === 6. SUPER ADMIN: KELOLA DATABASE (CRUD & SEARCH SEMUA TABEL) ===
+    async function renderSuperAdminDB() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `<div class="spinner-border text-success"></div> Memuat Kelola Database...`;
+
+      main.innerHTML = `
+        <div class="card card-dashboard p-4">
+          <h5><i class="bi bi-database-fill-gear text-success me-2"></i> Super Admin: Kelola Database (CRUD & Pencarian)</h5>
+          <p class="text-muted small">Pilih koleksi/tabel database Firebase untuk dikelola secara langsung dengan hak akses penuh Super Admin.</p>
+          <hr>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Pilih Koleksi / Tabel:</label>
+              <select id="dbCollectionSelect" class="form-select border-success fw-bold" onchange="loadDatabaseCollectionData()">
+                <option value="siswa">1. Koleksi Santri (siswa)</option>
+                <option value="users">2. Koleksi Pengguna (users)</option>
+                <option value="kelas">3. Koleksi Kelas (kelas)</option>
+                <option value="infaq">4. Koleksi Infaq (infaq)</option>
+                <option value="absensi">5. Koleksi Absensi (absensi)</option>
+                <option value="nilai">6. Koleksi Nilai (nilai)</option>
+                <option value="catatan_guru">7. Koleksi Catatan Guru (catatan_guru)</option>
+                <option value="masukan_wali">8. Koleksi Masukan Wali (masukan_wali)</option>
+                <option value="tahun_ajaran">9. Koleksi Tahun Ajaran (tahun_ajaran)</option>
+                <option value="broadcast">10. Koleksi Broadcast (broadcast)</option>
+                <option value="system_logs">11. Koleksi Log Sistem (system_logs)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Pencarian Interaktif Data:</label>
+              <input type="text" id="searchDBInput" class="form-control border-success" placeholder="Ketik kata kunci untuk mencari di tabel terpilih..." onkeyup="filterDatabaseTable()">
+            </div>
+            <div class="col-md-2 text-end align-self-end">
+              <button class="btn btn-success w-100" onclick="openAddDBRecordModal()"><i class="bi bi-plus-circle me-1"></i>Tambah Data</button>
+            </div>
+          </div>
+
+          <div class="table-responsive" id="dbTableContainer">
+            <div class="text-center text-muted p-3">Memuat data tabel...</div>
+          </div>
+          <div id="paginationDBManager"></div>
+        </div>
+      `;
+
+      loadDatabaseCollectionData();
+    }
+
+    window.loadDatabaseCollectionData = async function() {
+      const colName = document.getElementById('dbCollectionSelect').value;
+      const container = document.getElementById('dbTableContainer');
+      container.innerHTML = `<div class="spinner-border spinner-border-sm text-success"></div> Mengambil data dari ${colName}...`;
+
+      try {
+        const snap = await getDocs(collection(db, colName));
+        let listData = [];
+        snap.forEach(d => {
+          listData.push({ docId: d.id, ...d.data() });
+        });
+
+        window.rawDBCollectionCache = listData;
+        window.currentSelectedCollection = colName;
+        filterDatabaseTable();
+      } catch (err) {
+        container.innerHTML = `<div class="alert alert-danger">Gagal memuat koleksi: ${err.message}</div>`;
+      }
+    };
+
+    window.filterDatabaseTable = function() {
+      const colName = window.currentSelectedCollection;
+      const searchQuery = document.getElementById('searchDBInput')?.value.toLowerCase().trim();
+      const dataList = window.rawDBCollectionCache || [];
+
+      let filtered = dataList.filter(item => {
+        if (!searchQuery) return true;
+        return Object.values(item).some(val => 
+          val && val.toString().toLowerCase().includes(searchQuery)
+        );
+      });
+
+      const paginated = paginateArray(filtered, 'dbManager');
+      let headersHtml = `<th width="40" class="text-center">No</th><th width="180">Document ID</th>`;
+      
+      if (filtered.length > 0) {
+        const sampleKeys = Object.keys(filtered[0]).filter(k => k !== 'docId');
+        sampleKeys.forEach(k => {
+          headersHtml += `<th>${k}</th>`;
+        });
+      }
+      headersHtml += `<th width="130" class="text-center">Aksi (CRUD)</th>`;
+
+      let rowsHtml = '';
+      let no = (window.paginationState.dbManager.page - 1) * window.paginationState.dbManager.limit + 1;
+
+      paginated.forEach(item => {
+        let colsHtml = `<td class="text-center">${no++}</td><td><code class="small">${item.docId}</code></td>`;
+        const sampleKeys = Object.keys(item).filter(k => k !== 'docId');
+        
+        sampleKeys.forEach(k => {
+          let val = item[k];
+          if (typeof val === 'object' && val !== null) {
+            val = JSON.stringify(val);
+          }
+          colsHtml += `<td><div style="max-height:60px; overflow-y:auto; font-size:0.85rem;">${val !== undefined ? val : ''}</div></td>`;
+        });
+
+        colsHtml += `
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-success p-1 py-0 me-1" onclick="openEditDBRecordModal('${item.docId}')" title="Edit">
+              <i class="bi bi-pencil-square"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger p-1 py-0" onclick="deleteDBRecord('${item.docId}')" title="Hapus">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        `;
+
+        rowsHtml += `<tr>${colsHtml}</tr>`;
+      });
+
+      document.getElementById('dbTableContainer').innerHTML = `
+        <table class="table table-sm table-bordered table-striped align-middle">
+          <thead class="table-success"><tr>${headersHtml}</tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="100" class="text-center text-muted">Tidak ada data ditemukan dalam koleksi ini.</td></tr>'}</tbody>
+        </table>
+      `;
+
+      const pagEl = document.getElementById('paginationDBManager');
+      if (pagEl) {
+        pagEl.innerHTML = renderPaginationControls('dbManager', filtered.length, filterDatabaseTable);
+      }
+    };
+
+    window.openAddDBRecordModal = function() {
+      const colName = window.currentSelectedCollection;
+      let sampleItem = (window.rawDBCollectionCache && window.rawDBCollectionCache.length > 0) ? { ...window.rawDBCollectionCache[0] } : { id: '', nama: '' };
+      delete sampleItem.docId;
+
+      let formFieldsHtml = `<input type="hidden" id="modalDBAction" value="add"><input type="hidden" id="modalDBColName" value="${colName}">`;
+      Object.keys(sampleItem).forEach(k => {
+        formFieldsHtml += `
+          <div class="mb-3">
+            <label class="form-label fw-bold small text-uppercase">${k}:</label>
+            <input type="text" class="form-control form-control-sm db-field-input" data-key="${k}" placeholder="Masukkan nilai ${k}...">
+          </div>
+        `;
+      });
+
+      // Show in dynamic modal or simple prompt / custom UI container if needed
+      // To ensure smooth user experience, we can render a temporary prompt or container popup. Let's create a dynamic modal wrapper or alert box prompt.
+      let valJson = prompt(`Tambah Data Baru ke Koleksi [${colName}]. Masukkan data dalam format JSON Key-Value:`, JSON.stringify(sampleItem, null, 2));
+      if (valJson) {
+        try {
+          let parsedObj = JSON.parse(valJson);
+          addDoc(collection(db, colName), parsedObj).then(() => {
+            logSystemActivity(`Super Admin menambah data baru ke koleksi ${colName}`);
+            alert('Data berhasil ditambahkan ke database!');
+            loadDatabaseCollectionData();
+          }).catch(e => alert('Gagal menambah: ' + e.message));
+        } catch (e) {
+          alert('Format JSON tidak valid: ' + e.message);
+        }
+      }
+    };
+
+    window.openEditDBRecordModal = function(docId) {
+      const colName = window.currentSelectedCollection;
+      const itemObj = (window.rawDBCollectionCache || []).find(i => i.docId === docId);
+      if (!itemObj) return;
+
+      let cleanObj = { ...itemObj };
+      delete cleanObj.docId;
+
+      let valJson = prompt(`Edit Data Dokumen [${docId}] di Koleksi [${colName}]:`, JSON.stringify(cleanObj, null, 2));
+      if (valJson) {
+        try {
+          let parsedObj = JSON.parse(valJson);
+          updateDoc(doc(db, colName, docId), parsedObj).then(() => {
+            logSystemActivity(`Super Admin mengupdate dokumen ${docId} di koleksi ${colName}`);
+            alert('Data berhasil diperbarui!');
+            loadDatabaseCollectionData();
+          }).catch(e => alert('Gagal update: ' + e.message));
+        } catch (e) {
+          alert('Format JSON tidak valid: ' + e.message);
+        }
+      }
+    };
+
+    window.deleteDBRecord = async function(docId) {
+      const colName = window.currentSelectedCollection;
+      if (confirm(`Yakin ingin menghapus dokumen [${docId}] dari koleksi [${colName}]?`)) {
+        try {
+          await deleteDoc(doc(db, colName, docId));
+          await logSystemActivity(`Super Admin menghapus dokumen ${docId} dari koleksi ${colName}`);
+          alert('Dokumen berhasil dihapus dari database.');
+          loadDatabaseCollectionData();
+        } catch (err) {
+          alert('Gagal menghapus: ' + err.message);
+        }
+      }
+    };
 
 
     // AUTO RESTORE SESSION
