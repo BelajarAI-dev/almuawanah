@@ -70,7 +70,7 @@
     <div class="card login-card p-4">
       <div class="text-center mb-3">
         <i class="bi bi-book-half text-success display-4"></i>
-        <h4 class="mt-2 fw-bold text-success">TPQ AL-MUAWANAH</h4>
+        <h4 class="mt-2 fw-bold text-success">SDI AL-MUAWANAH</h4>
         <p class="text-muted small">Sistem Informasi Absensi & Monitoring (Firebase)</p>
       </div>
 
@@ -97,7 +97,7 @@
         <i class="bi bi-list fs-5"></i>
       </button>
       
-      <a class="navbar-brand" href="javascript:void(0)"><i class="bi bi-journal-check"></i> TPQ AL-MUAWANAH</a>
+      <a class="navbar-brand" href="javascript:void(0)"><i class="bi bi-journal-check"></i> SDI AL-MUAWANAH</a>
       
       <div class="ms-auto d-flex align-items-center">
         <span class="ms-3 badge bg-light text-dark p-2 border" id="userBadge">Role: -</span>
@@ -555,11 +555,11 @@
           options += `<option value="${k.id_kelas}" ${isSelected}>${k.id_kelas} - ${k.nama_kelas}</option>`;
         });
         if (snap.empty && !includeEmpty) {
-          options = '<option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>';
+          options = '<option value="KLS-01">KLS-01 - Kelas 1</option>';
         }
         return options;
       } catch (err) {
-        return includeEmpty ? '<option value="">-- Tidak Terikat Kelas --</option><option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>' : '<option value="KLS-01">KLS-01 - Kelas 1 TPQ</option>';
+        return includeEmpty ? '<option value="">-- Tidak Terikat Kelas --</option><option value="KLS-01">KLS-01 - Kelas 1</option>' : '<option value="KLS-01">KLS-01 - Kelas 1</option>';
       }
     };
 
@@ -2508,7 +2508,7 @@
             <div class="col-md-1"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
           </form>
 
-          <h6 class="fw-bold text-success mb-3">Daftar Santri TPQ</h6>
+          <h6 class="fw-bold text-success mb-3">Daftar Santri</h6>
           <div class="row bg-light p-3 rounded mb-3 border align-items-center g-2">
             <div class="col-md-4">
               <label class="form-label fw-bold mb-1">Filter Kelas:</label>
@@ -2926,7 +2926,7 @@
 
       main.innerHTML = `
         <div class="card card-dashboard p-4">
-          <h5><i class="bi bi-arrow-left-right text-success me-2"></i> Manajemen Kelas TPQ</h5>
+          <h5><i class="bi bi-arrow-left-right text-success me-2"></i> Manajemen Kelas</h5>
           <hr>
           <form onsubmit="addKelas(event)" class="row g-2 mb-4 bg-light p-3 rounded border">
             <h6 class="fw-bold text-success">Tambah Kelas Baru</h6>
